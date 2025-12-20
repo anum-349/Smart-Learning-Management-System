@@ -10,17 +10,55 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
+
         if (!email || !password) {
             setError("Please enter both email and password.");
             return;
         }
+
         setLoading(true);
-        // Perform login logic here...
-        setTimeout(() => setLoading(false), 1000); // simulate login
+
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.message || "Login failed");
+                return;
+            }
+
+            // ✅ Save JWT
+            localStorage.setItem("lms_token", data.token);
+            localStorage.setItem("lms_role", data.role);
+
+            // ✅ Redirect by role
+            if (data.role === "Admin") {
+                window.location.href = "/admin";
+            } else if (data.role === "Instructor") {
+                window.location.href = "/instructor";
+            } else {
+                window.location.href = "/student";
+            }
+
+        } catch (err) {
+            setError("Server error: " + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
+
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-linear-to-tr  relative text-black">

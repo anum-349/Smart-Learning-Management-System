@@ -62,7 +62,7 @@ const AdminDashboard = () => {
     return (
         <div className={`bg-textDark min-h-screen text-textLight`}>
 
-            <NavBar />
+            <NavBar userType={"Admin"} />
             <main className="flex-1 ml-64">
                 <Header notification={initialNotifications} user={loggedInUserName} />
 
@@ -155,6 +155,38 @@ const AdminDashboard = () => {
                                 />
 
                                 <QuickActionButton
+                                    title="Manage Courses"
+                                    icon={<Building2 size={32} />}
+                                    href="/admin/courses"
+                                    bgColor={`bg-primary/50`}
+                                    hoverBgColor={`hover:bg-primary/20`}
+                                />
+
+                                <QuickActionButton
+                                    title="Manage Course Assignment"
+                                    icon={<Building2 size={32} />}
+                                    href="/admin/course-assignment"
+                                    bgColor={`bg-primary/50`}
+                                    hoverBgColor={`hover:bg-primary/20`}
+                                />
+
+                                <QuickActionButton
+                                    title="Manage Course Registration"
+                                    icon={<Building2 size={32} />}
+                                    href="/admin/registration-request"
+                                    bgColor={`bg-primary/50`}
+                                    hoverBgColor={`hover:bg-primary/20`}
+                                />
+
+                                <QuickActionButton
+                                    title="Manage Course Content"
+                                    icon={<Building2 size={32} />}
+                                    href="/admin/course-content"
+                                    bgColor={`bg-primary/50`}
+                                    hoverBgColor={`hover:bg-primary/20`}
+                                />
+
+                                <QuickActionButton
                                     title="Manage Students"
                                     icon={<GraduationCap size={32} />}
                                     href="/admin/student"
@@ -166,54 +198,6 @@ const AdminDashboard = () => {
                                     title="Manage Instructors"
                                     icon={<UserCog size={32} />}
                                     href="/admin/instructor"
-                                    bgColor={`bg-primary/50`}
-                                    hoverBgColor={`hover:bg-primary/20`}
-                                />
-
-                                <QuickActionButton
-                                    title="Assign Instructors"
-                                    icon={<UserCheck size={32} />}
-                                    href="/admin/courses/assign-courses"
-                                    bgColor={`bg-primary/50`}
-                                    hoverBgColor={`hover:bg-primary/20`}
-                                />
-
-                                <QuickActionButton
-                                    title="Manage Courses"
-                                    icon={<Library size={32} />}
-                                    href="/admin/courses"
-                                    bgColor={`bg-primary/50`}
-                                    hoverBgColor={`hover:bg-primary/20`}
-                                />
-
-                                <QuickActionButton
-                                    title="Manage Timetables"
-                                    icon={<CalendarDays size={32} />}
-                                    href="/admin/timetable"
-                                    bgColor={`bg-primary/50`}
-                                    hoverBgColor={`hover:bg-primary/20`}
-                                />
-
-                                <QuickActionButton
-                                    title="Assign Courses to Semester"
-                                    icon={<Layers size={32} />}
-                                    href="/admin/semester-course"
-                                    bgColor={`bg-primary/50`}
-                                    hoverBgColor={`hover:bg-primary/20`}
-                                />
-
-                                <QuickActionButton
-                                    title="Semesters Management"
-                                    icon={<Layers size={32} />}
-                                    href="/admin/semester"
-                                    bgColor={`bg-primary/50`}
-                                    hoverBgColor={`hover:bg-primary/20`}
-                                />
-
-                                <QuickActionButton
-                                    title="Approve Results"
-                                    icon={<Layers size={32} />}
-                                    href="/admin/result"
                                     bgColor={`bg-primary/50`}
                                     hoverBgColor={`hover:bg-primary/20`}
                                 />

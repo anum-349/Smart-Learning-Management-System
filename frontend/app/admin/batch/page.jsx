@@ -1,51 +1,187 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Settings as SettingsIcon, Bell, Save, Camera } from "lucide-react";
+import { Search, Edit, PlusCircle, Trash2 } from "lucide-react";
 import Header from "../../header/Header";
 import NavBar from "../../navbar/NavBar";
+import Select from "../../../components/Select";
+import Input from "../../../components/Input";
+import Td from "../../../components/Td";
+import Th from "../../../components/Th";
 
 const initialNotifications = [
-  { id: 1, text: "New user registered!", isRead: false, type: "general" }
+  { id: 1, text: "New batch created", isRead: false, type: "general" },
 ];
 
-export default function AdminSettings() {
-  const [settings, setSettings] = useState({
-    siteName: "Learning Management System",
-    defaultLanguage: "English",
-    timezone: "GMT+5",
-    emailNotifications: true,
-    pushNotifications: false,
-    profilePic: null,
-    profilePreview: null 
+export default function AdminBatchManagement() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  const [batches, setBatches] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [instructors, setInstructors] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isEdit, setIsEdit] = useState(false);
+
+  const [newBatch, setNewBatch] = useState({
+    title: "",
+    year: "",
+    term: "",
+    programId: "",
+    batchAdvisor: "",
   });
 
-  const handleChange = (field, value) => {
-    setSettings({ ...settings, [field]: value });
-  };
+  const [updateData, setUpdateData] = useState({
+    id: "",
+    title: "",
+    year: "",
+    term: "",
+    programId: "",
+    batchAdvisor: "",
+  });
 
-  const handleProfileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSettings({
-        ...settings,
-        profilePic: file,
-        profilePreview: URL.createObjectURL(file)
-      });
+  // ------------------ Fetch Data ------------------
+  useEffect(() => {
+    fetchAllData();
+  }, []);
+
+  const fetchBatches = async () => {
+    const batchRes = await fetch(`${API_URL}/batches`);
+    const batchData = await batchRes.json();
+    setBatches(batchData);
+  }
+
+  const fetchAllData = async () => {
+    try {
+      // Fetch batches
+      fetchBatches()
+
+      // Fetch programs
+      const progRes = await fetch(`${API_URL}/programs`);
+      const progData = await progRes.json();
+      setPrograms(progData);
+
+      // Fetch instructors
+      const instrRes = await fetch(`${API_URL}/instructor/advisor`);
+      const instrData = await instrRes.json();
+      setInstructors(instrData);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load data.");
     }
   };
 
-  const handleSave = (e) => {
+  // ------------------ Filter ------------------
+  const filteredBatches = batches.filter(
+    (b) =>
+      b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.program?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${b.batch_advisor?.firstName} ${b.batch_advisor?.lastName}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+  );
+
+  // ------------------ CREATE ------------------
+  const handleAddBatch = async (e) => {
     e.preventDefault();
-    alert("Settings saved successfully!");
-    console.log(settings);
+    if (!newBatch.title || !newBatch.year || !newBatch.term || !newBatch.programId || !newBatch.batchAdvisor) {
+      alert("Please fill all fields.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/batches`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: newBatch.title,
+          year: newBatch.year,
+          term: newBatch.term,
+          program_id: newBatch.programId,
+          batch_advisor_id: newBatch.batchAdvisor,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create batch.");
+
+      const createdBatch = await res.json();
+
+      fetchBatches()
+
+      setNewBatch({ title: "", year: "", term: "", programId: "", batchAdvisor: "" });
+      alert("Batch created successfully!");
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
+  };
+
+  // ------------------ UPDATE ------------------
+  const handleUpdateBatch = (b) => {
+    setIsEdit(true);
+    setUpdateData({
+      id: b.id,
+      title: b.title,
+      year: b.year,
+      term: b.term,
+      programId: b.program_id || "",
+      batchAdvisor: b.batch_advisor_id || "",
+    });
+  };
+
+  const handleUpdateSubmit = async (e) => {
+    e.preventDefault();
+    console.log(updateData)
+    try {
+      const res = await fetch(`${API_URL}/batches/${updateData.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: updateData.title,
+          year: updateData.year,
+          term: updateData.term,
+          program_id: updateData.programId,
+          batch_advisor_id: updateData.batchAdvisor,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update batch.");
+
+      const updatedBatch = await res.json();
+      fetchBatches()
+      setIsEdit(false);
+      alert("Batch updated successfully!");
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
+  };
+
+  // ------------------ DELETE ------------------
+  const handleDeleteBatch = async (id) => {
+    if (!confirm("Are you sure?")) return;
+    try {
+      const res = await fetch(`${API_URL}/batches/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete batch.");
+      fetchBatches()
+      alert("Batch deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
+  };
+
+  // ------------------ Form Handling ------------------
+  const formData = isEdit ? updateData : newBatch;
+  const handleChange = (field, value) => {
+    isEdit
+      ? setUpdateData({ ...updateData, [field]: value })
+      : setNewBatch({ ...newBatch, [field]: value });
   };
 
   return (
     <div className="flex bg-light min-h-screen text-primary">
-      <NavBar />
-
+      <NavBar userType={"Admin"} />
       <main className="flex-1 ml-64">
         <Header user="Admin" notification={initialNotifications} />
 
@@ -54,120 +190,110 @@ export default function AdminSettings() {
           <div className="text-sm text-gray-500 mb-6 flex items-center gap-2">
             <Link href="/admin" className="hover:text-accentDark">Dashboard</Link>
             <span>/</span>
-            <span>Settings</span>
+            <span>Batches</span>
           </div>
 
-          {/* Settings Form */}
-          <div className="bg-light border border-gray-200 rounded-xl shadow-md p-6 max-w-3xl mx-auto">
-            <h2 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
-              <SettingsIcon size={20} /> Admin Settings
+          {/* FORM */}
+          <div className="bg-light border border-gray-200 rounded-xl shadow-md p-6 max-w-5xl mx-auto mb-10">
+            <h2 className="text-xl font-bold flex items-center mb-6 text-primary">
+              {isEdit ? "Update Batch" : "Create New Batch"}
             </h2>
 
-            <form onSubmit={handleSave} className="grid md:grid-cols-2 gap-4">
-
+            <form
+              onSubmit={isEdit ? handleUpdateSubmit : handleAddBatch}
+              className="grid md:grid-cols-4 gap-4"
+            >
               <Input
-                label="Site Name"
-                value={settings.siteName}
-                onChange={(v) => handleChange("siteName", v)}
+                label="Batch Title"
+                value={formData.title}
+                onChange={(v) => handleChange("title", v)}
               />
-
+              <Input
+                label="Year"
+                value={formData.year}
+                onChange={(v) => handleChange("year", v)}
+              />
               <Select
-                label="Default Language"
-                value={settings.defaultLanguage}
-                onChange={(v) => handleChange("defaultLanguage", v)}
+                label="Term"
+                value={formData.term}
+                onChange={(v) => handleChange("term", v)}
                 options={[
-                  { value: "English", label: "English" }
+                  { value: "", label: "-- Term --" },
+                  { value: "Fall", label: "Fall" },
+                  { value: "Spring", label: "Spring" },
+                  { value: "Summer", label: "Summer" },
+                ]}
+              />
+              <Select
+                label="Program"
+                value={formData.programId}
+                onChange={(v) => handleChange("programId", v)}
+                options={[
+                  { value: "", label: "-- Select Program --" },
+                  ...programs.map((d) => ({ value: d.id, label: d.title })),
+                ]} />
+              <Select
+                label="Batch Advisor"
+                value={formData.batchAdvisor}
+                onChange={(v) => { handleChange("batchAdvisor", v); console.log(instructors) }}
+                options={[
+                  { value: "", label: "-- Select Advisor --" },
+                  ...instructors.map((d) => ({ value: d.id, label: d.full_name })),
                 ]}
               />
 
-              <Input
-                label="Timezone"
-                value={settings.timezone}
-                onChange={(v) => handleChange("timezone", v)}
-              />
-
-              <div className="flex flex-col">
-                <label className="text-xs text-secondary mb-1">Email Notifications</label>
-                <input
-                  type="checkbox"
-                  checked={settings.emailNotifications}
-                  onChange={(e) => handleChange("emailNotifications", e.target.checked)}
-                  className="h-4 w-4"
-                />
-              </div>
-
-              <div className="flex flex-col">
-                <label className="text-xs text-secondary mb-1">Push Notifications</label>
-                <input
-                  type="checkbox"
-                  checked={settings.pushNotifications}
-                  onChange={(e) => handleChange("pushNotifications", e.target.checked)}
-                  className="h-4 w-4"
-                />
-              </div>
-
-              {/* Profile Picture Upload */}
-              <div className="col-span-2 flex flex-col items-start">
-                <label className="text-xs text-secondary mb-1">Profile Picture</label>
-                <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 border border-gray-300 rounded-full overflow-hidden flex items-center justify-center bg-gray-100">
-                    {settings.profilePreview ? (
-                      <img src={settings.profilePreview} alt="Profile Preview" className="w-full h-full object-cover"/>
-                    ) : (
-                      <Camera size={24} className="text-gray-400" />
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleProfileUpload}
-                    className="cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                className="col-span-2 mt-4 bg-accentDark hover:bg-accent text-white py-2 rounded-xl flex items-center justify-center gap-2 font-semibold"
-              >
-                <Save size={18} /> Save Settings
+              <button type="submit" className={`col-span-4 mt-2 py-2 rounded-xl flex items-center justify-center font-semibold text-white ${isEdit ? "bg-primary hover:bg-secondary/40" : "bg-accentDark hover:bg-accent"}`}>
+                {isEdit ? <Edit className="mr-2" /> : <PlusCircle className="mr-2" />}
+                {isEdit ? "Save Changes" : "Add Batch"}
               </button>
+
+              {isEdit && (
+                <button type="button" onClick={() => setIsEdit(false)} className="col-span-4 mt-2 py-2 rounded-xl bg-gray-400 hover:bg-gray-500 text-white">
+                  Cancel Update
+                </button>
+              )}
             </form>
           </div>
+
+          {/* TABLE */}
+          <BatchTable batches={filteredBatches} onEdit={handleUpdateBatch} onDelete={handleDeleteBatch} />
         </div>
       </main>
     </div>
   );
 }
 
-// Input Component
-const Input = ({ label, value, onChange, placeholder, type }) => (
-  <div className="flex flex-col">
-    <label className="text-xs text-secondary mb-1">{label}</label>
-    <input
-      type={type || "text"}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="bg-white border border-gray-300 rounded-xl px-3 py-2 focus:ring-accentDark"
-    />
-  </div>
-);
-
-// Select Component
-const Select = ({ label, value, onChange, options }) => (
-  <div className="flex flex-col">
-    <label className="text-xs text-secondary mb-1">{label}</label>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="bg-white border border-gray-300 rounded-xl px-3 py-2 cursor-pointer"
-    >
-      {options.map((op, idx) => (
-        <option key={idx} value={op.value}>
-          {op.label}
-        </option>
-      ))}
-    </select>
+const BatchTable = ({ batches, onEdit, onDelete }) => (
+  <div className="max-w-5xl mx-auto">
+    <div className="border border-gray-200 rounded-xl overflow-hidden bg-light shadow-md">
+      <table className="w-full text-sm">
+        <thead className="bg-primary text-white">
+          <tr>
+            <Th>Batch</Th>
+            <Th>Year</Th>
+            <Th>Term</Th>
+            <Th>Program</Th>
+            <Th>Advisor</Th>
+            <Th>Actions</Th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {batches.map((b) => (
+            <tr key={b.id} className="hover:bg-gray-100">
+              <Td>{b.title}</Td>
+              <Td>{b.year}</Td>
+              <Td>{b.term}</Td>
+              <Td>{b.program_title}</Td>
+              <Td>{b.full_name}</Td>
+              <Td>
+                <button onClick={() => onEdit(b)} className="text-primary hover:text-secondary mr-3"><Edit size={18} /></button>
+                <button onClick={() => onDelete(b.id)} className="text-accentDark hover:text-accent"><Trash2 size={18} /></button>
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    {batches.length === 0 && <p className="text-center text-gray-500 py-6">No batches found.</p>}
   </div>
 );

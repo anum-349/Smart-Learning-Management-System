@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 
+const HARD_CODED_OTP = "123456";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 const EnterEmail = ({ setStep, setEmail, setOtp }) => {
     const [emailInput, setEmailInput] = useState("");
     const [error, setError] = useState("");
@@ -19,7 +22,6 @@ const EnterEmail = ({ setStep, setEmail, setOtp }) => {
 
         setTimeout(() => {
             setEmail(emailInput);
-            setOtp("123456");
             setStep("otp");
             setIsSending(false);
         }, 1000);
@@ -80,7 +82,7 @@ const EnterOTP = ({ otp, setOtp, email, setStep }) => {
         setTimer(60);
         setCanResend(false);
         setError("");
-        setOtp("123456"); // reset dummy OTP
+        setOtp(""); // reset dummy OTP
     };
 
     const handleChange = (value, index) => {
@@ -105,7 +107,7 @@ const EnterOTP = ({ otp, setOtp, email, setStep }) => {
     };
 
     const verifyOtp = () => {
-        if (otp === "123456") {
+        if (otp === HARD_CODED_OTP) {
             setStep("reset");
         } else {
             setError("Invalid OTP");
@@ -172,17 +174,34 @@ const ResetPassword = ({ email, setStep }) => {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = () => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+    const handleSubmit = async () => {
         setError("");
         if (!form.password || !form.confirmPassword) return setError("All fields required");
         if (form.password !== form.confirmPassword) return setError("Passwords do not match");
 
         setLoading(true);
-        setTimeout(() => {
-            alert("Password reset successfully!");
+
+        try {
+            const response = await fetch(`${API_URL}/auth/forgot-password`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, newPassword: form.password }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                setError(data.message || "Password reset failed");
+            } else {
+                alert("Password reset successfully!");
+                router.push("/login");
+            }
+        } catch (err) {
+            setError("Server error: " + err.message);
+        } finally {
             setLoading(false);
-            router.push("/login");
-        }, 1000);
+        }
     };
 
     return (
@@ -211,7 +230,7 @@ const ResetPassword = ({ email, setStep }) => {
                         />
                         <button
                             type="button"
-                            onClick={() => setShowPassword(!showPassword)} 
+                            onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary transition"
                         >
                             {showPassword ? <FaEye /> : <FaEyeSlash />}

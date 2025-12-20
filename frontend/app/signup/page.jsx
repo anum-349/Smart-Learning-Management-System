@@ -4,30 +4,31 @@ import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
 
 export default function LMSSignupPage() {
-    const [role, setRole] = useState("student");
+    const [role, setRole] = useState("Student");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const [extraField, setExtraField] = useState(""); 
-    const [adminSecret, setAdminSecret] = useState(""); 
+    const [extraField, setExtraField] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    const ADMIN_SECRET_KEY = "LMS-ADMIN-2025"; 
+    const ADMIN_SECRET_KEY = process.env.NEXT_PUBLIC_ADMIN_SECRET;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
 
-        if (!name || !email || !password || !confirmPassword || !extraField) {
+        console.log({name, email, password, confirmPassword, role})
+        if (!name || !email || !password || !confirmPassword) {
             setError("Please fill all required fields.");
             return;
         }
 
-        if (role === "admin" && adminSecret !== ADMIN_SECRET_KEY) {
+        if (role === "Admin" && extraField !== ADMIN_SECRET_KEY) {
             setError("Invalid admin secret key.");
             return;
         }
@@ -38,8 +39,26 @@ export default function LMSSignupPage() {
         }
 
         setLoading(true);
-        // Call your API to register user with role
-        setTimeout(() => setLoading(false), 1000);
+        try {
+            const response = await fetch(`${API_URL}/auth/signup`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, email, password, role }),
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                setError(data.message || "Signup failed");
+            } else {
+                alert("Account created successfully! You can now login.");
+                // Optionally, redirect to login
+                window.location.href = "/login";
+            }
+        } catch (err) {
+            setError("Server error: " + err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -71,9 +90,9 @@ export default function LMSSignupPage() {
                                 onChange={(e) => setRole(e.target.value)}
                                 className="w-full px-4 py-3 border-secondary border rounded-lg  text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary transition"
                             >
-                                <option value="student">Student</option>
-                                <option value="instructor">Instructor</option>
-                                <option value="admin">Admin</option>
+                                <option value="Student">Student</option>
+                                <option value="Instructor">Instructor</option>
+                                <option value="Admin">Admin</option>
                             </select>
                         </div>
 
@@ -99,14 +118,14 @@ export default function LMSSignupPage() {
                             />
                         </div>
 
-                        {role === "admin" && (
+                        {role === "Admin" && (
                             <>
                                 <div className="mb-5">
                                     <input
                                         type="text"
                                         placeholder="Admin Secret Key"
-                                        value={adminSecret}
-                                        onChange={(e) => setAdminSecret(e.target.value)}
+                                        value={extraField}
+                                        onChange={(e) => setExtraField(e.target.value)}
                                         className="w-full px-4 py-3 border-secondary border rounded-lg  text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary transition"
                                     />
                                 </div>

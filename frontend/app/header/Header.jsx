@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell } from "lucide-react";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 const LetterAvatar = ({ name, size = 32, textSize = "text-sm", bgColor = "bg-secondary" }) => {
@@ -46,7 +47,7 @@ export default function Header({ user, notification }) {
                 </h1>
 
                 <div className="flex items-center space-x-4">
-                    
+
                     <button
                         onClick={togglePanel}
                         className="p-2 rounded-full hover:bg-secondary/30 transition-colors relative"
@@ -59,15 +60,17 @@ export default function Header({ user, notification }) {
                     </button>
 
                     {/* USER SECTION */}
-                    <div className="flex items-center space-x-2">
-                        <LetterAvatar
-                            name={user}
-                            size={32}
-                            textSize="text-sm"
-                            bgColor="bg-accentDark"
-                        />
-                        <span className="font-semibold text-secondary">{user}</span>
-                    </div>
+                    <Link href={'/instructor/profile'}>
+                        <div className="flex items-center space-x-2">
+                            <LetterAvatar
+                                name={user}
+                                size={32}
+                                textSize="text-sm"
+                                bgColor="bg-accentDark"
+                            />
+                            <span className="font-semibold text-secondary">{user}</span>
+                        </div>
+                    </Link>
                 </div>
             </header>
 
@@ -97,9 +100,9 @@ export default function Header({ user, notification }) {
                             className={`
                                 cursor-pointer px-4 py-3 text-textDark text-sm border-b border-secondary/30
                                 transition-all 
-                                ${!n.isRead ? 
-                                    "bg-light font-semibold text-primary border-l-4 border-textDark border-b-secondary/30 pl-3" 
-                                    : 
+                                ${!n.isRead ?
+                                    "bg-light font-semibold text-primary border-l-4 border-textDark border-b-secondary/30 pl-3"
+                                    :
                                     "hover:bg-light"
                                 }
                             `}
