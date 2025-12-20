@@ -1,10 +1,15 @@
 import mongoose from "mongoose";
-import Grade from "./gradeModel.js";
 import User from "./userModel.js";
+
 const studentSchema = new mongoose.Schema({
     departmentId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Department",
+        required: true
+    },
+    programId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Program",
         required: true
     },
     semesterId: {
@@ -13,9 +18,9 @@ const studentSchema = new mongoose.Schema({
         required: true
     },
     status: {
-        type: string,
+        type: String,
         enum: ["active", "inactive", "frozen", "in_progress", "completed", "withdrawn"],
-        reqired: true
+        required: true
     },
     qualifications: [{
         type: mongoose.Schema.Types.ObjectId,

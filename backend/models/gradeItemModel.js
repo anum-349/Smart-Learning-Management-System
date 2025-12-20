@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import Grade from "./grade.js";
 
 const gradeItemSchema = new mongoose.Schema({
     courseAssignmentId: {

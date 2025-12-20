@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import Reply from "./messageReplyModel"
 
 const msg = new mongoose.Schema({
     senderId: {

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+
 const quizSchema = new mongoose.Schema({
   courseAssignmentId: { type: mongoose.Schema.Types.ObjectId, ref: "CourseAssignment", required: true },
   title: { type: String, required: true },

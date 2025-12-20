@@ -1,9 +1,5 @@
 import Course from "../models/courseModel.js";
 import Department from "../models/facultyModel.js";
-import CourseContent from "../models/courseContentModel.js";
-import Assignment from "../models/assignmentModel.js";
-import AttendanceSession from "../models/attendanceSessionModel.js";
-import CalendarEvent from "../models/calendarModel.js";
 
 export const createCourse = async (req, res) => {
     try {

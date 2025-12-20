@@ -30,7 +30,7 @@ help.pre("findOneAndDelete", async function (next) {
         if (!ticket) return next();
 
         await mongoose.model("TicketReply")
-            .deleteMany({ ticketId: ticket._id });
+            .deleteMaany({ ticketId: ticket._id });
 
         next();
     } catch (err) {
