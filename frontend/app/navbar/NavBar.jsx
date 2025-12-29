@@ -22,7 +22,7 @@ const AdminLinks = [
     { icon: BookOpen, label: "Programs", href: "/admin/program" },
     { icon: Users, label: "Batches", href: "/admin/batch" },
     { icon: Users, label: "Semester", href: "/admin/semester" },
-    { icon: Settings, label: "Settings", href: "/admin/settings" },
+    { icon: LogOut, label: "Logout", href: "/login" },
 ];
 
 const InstructorLinks = [
@@ -38,7 +38,6 @@ const StudentLinks = [
     { icon: User, label: "Profile", href: "/student/profile" },
     { icon: Table, label: "Timetable", href: "/student/timetable" },
     { icon: Calendar, label: "Calendar", href: "/student/calendar" },
-    { icon: Settings, label: "Settings", href: "/student/setting" },
     { icon: LogOut, label: "Logout", href: "/login" },
 ];
 

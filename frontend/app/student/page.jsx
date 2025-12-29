@@ -1,124 +1,181 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation";
-import Header from "../header/Header";
+import Link from "next/link";
+import {
+    BookOpen,
+    CheckCircle,
+    Notebook,
+    List,
+    MessageCircle,
+    Table,
+    GraduationCap
+} from "lucide-react";
+
 import NavBar from "../navbar/NavBar";
-import { useEffect, useState } from "react";
+import Header from "../header/Header";
 
-const initialNotifications = [
-    { id: 1, text: "New course added", isRead: false, type: "general" },
-];
+/* ---------------- Dummy Data ---------------- */
 
 const dummyStudent = {
-  _id: "stu-001",
-  userName: "anumkousar",
-  firstName: "Anum",
-  lastName: "Kousar",
-  email: "anum.kousar@example.com",
-  enrollments: [
-    {
-      courseId: "csc-101",
-      code: "CSC-101",
-      title: "Introduction to Computer Science",
-      creditHour: 3,
-      department: { _id: "dept-001", name: "Computer Science" },
-      instructor: { _id: "inst-001", firstName: "Theresa", lastName: "Flores" },
-      grade: "A",
-      semester: 1,
-      enrolledAt: "2025-01-10T10:00:00Z",
-    },
-    {
-      courseId: "csc-102",
-      code: "CSC-102",
-      title: "Data Structures and Algorithms",
-      creditHour: 3,
-      department: { _id: "dept-001", name: "Computer Science" },
-      instructor: { _id: "inst-002", firstName: "John", lastName: "Doe" },
-      grade: "B+",
-      semester: 1,
-      enrolledAt: "2025-01-11T10:00:00Z",
-    },
-    {
-      courseId: "math-101",
-      code: "MATH-101",
-      title: "Calculus I",
-      creditHour: 4,
-      department: { _id: "dept-002", name: "Mathematics" },
-      instructor: { _id: "inst-003", firstName: "Alice", lastName: "Smith" },
-      grade: "A-",
-      semester: 1,
-      enrolledAt: "2025-01-12T10:00:00Z",
-    },
-  ]
-}
+    firstName: "Anum",
+    lastName: "Kousar",
+    email: "anum.kousar@example.com",
+    enrollments: [
+        {
+            courseId: "CSC-101",
+            code: "CSC-101",
+            title: "Introduction to Computer Science",
+            semester: 1,
+            instructor: { firstName: "Theresa", lastName: "Flores" }
+        },
+        {
+            courseId: "CSC-102",
+            code: "CSC-102",
+            title: "Data Structures & Algorithms",
+            semester: 1,
+            instructor: { firstName: "John", lastName: "Doe" }
+        },
+        {
+            courseId: "MATH-101",
+            code: "MATH-101",
+            title: "Calculus I",
+            semester: 1,
+            instructor: { firstName: "Alice", lastName: "Smith" }
+        }
+    ]
+};
+
+const notifications = [
+    { id: 1, text: "Assignment due tomorrow", isRead: false },
+    { id: 2, text: "Quiz schedule updated", isRead: true }
+];
+
+/* ---------------- Reusable Components ---------------- */
+
+const DashboardCard = ({ title, children }) => (
+    <div className="bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="bg-primary text-white p-3">
+            <h3 className="text-lg font-semibold">{title}</h3>
+        </div>
+        <div className="p-4">{children}</div>
+    </div>
+);
+
+const CourseCard = ({
+    courseTitle,
+    courseCode,
+    instructor,
+    semester,
+    icon: Icon,
+    link
+}) => (
+    <Link href={link}>
+        <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg shadow-sm hover:bg-gray-200 transition cursor-pointer mb-2">
+            <div className="flex items-center">
+                <Icon size={20} className="text-orange-500 mr-3" />
+                <div>
+                    <p className="font-semibold text-primary">
+                        {courseCode} – {courseTitle}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                        Instructor: {instructor}
+                    </p>
+                </div>
+            </div>
+            <p className="text-sm text-gray-600">Semester {semester}</p>
+        </div>
+    </Link>
+);
+
+const ActivityItem = ({ icon: Icon, text, count, link }) => (
+    <Link
+        href={link}
+        className="flex flex-col items-center text-primary hover:text-secondary transition relative"
+    >
+        <Icon size={28} className="mb-1" />
+        <span className="text-sm text-center">{text}</span>
+        {count && (
+            <span className="absolute top-0 right-0 bg-red-500 text-white rounded-full px-1 text-xs">
+                {count}
+            </span>
+        )}
+    </Link>
+);
+
+/* ---------------- Student Dashboard ---------------- */
 
 export default function StudentDashboard() {
-    const [student, setStudent] = useState(dummyStudent);
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
-
-    const fetchStudent = async () => {
-        // try {
-        //     setLoading(true);
-        //     const res = await fetch("http://localhost:5000/api/student/me", {
-        //         headers: {
-        //             "Content-Type": "application/json",
-        //             Authorization: "Bearer lms", // replace with real token
-        //         },
-        //     });
-        //     if (!res.ok) throw new Error("Failed to fetch student");
-        //     const data: Student = await res.json();
-        //     setStudent(data);
-        // } catch (err) {
-        //     console.error(err);
-        //     alert("Error fetching student data");
-        // } finally {
-        //     setLoading(false);
-        // }
-    };
-
-    useEffect(() => {
-        fetchStudent();
-    }, []);
-
-    if (loading) return <p className="text-center mt-10 text-lg">Loading your dashboard...</p>;
-    if (!student) return <p className="text-center mt-10 text-lg">No student data found.</p>;
-
     return (
         <div className="flex bg-light min-h-screen text-primary">
-            <NavBar />
-            <main className="flex-1 ml-64">
-                <Header user="Student" notification={initialNotifications} />
-                <div className="min-h-screen bg-gray-100 text-gray-800 p-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-md mb-6">
-                        <h2 className="text-xl font-bold mb-2">Profile Information</h2>
-                        <p><strong>Name:</strong> {student.firstName} {student.lastName}</p>
-                        <p><strong>Username:</strong> {student.userName}</p>
-                        <p><strong>Email:</strong> {student.email}</p>
-                    </div>
+            {/* Sidebar */}
+            <NavBar userType="Student" />
 
-                    <div className="bg-white p-6 rounded-2xl shadow-md">
-                        <h2 className="text-xl font-bold mb-4">Enrolled Courses</h2>
-                        {student.enrollments.length === 0 ? (
-                            <p className="text-gray-600">You are not enrolled in any courses yet.</p>
-                        ) : (
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {student.enrollments.map((enroll) => (
-                                    <div key={enroll.courseId} className="p-4 border rounded-xl shadow-sm hover:scale-105 transition-transform duration-200 ease-in-out"
-                                    onClick={()=> router.push("/student/course")}>
-                                        <h3 className="font-bold text-lg">{enroll.title}</h3>
-                                        <p className="text-sm text-gray-600">{enroll.code}</p>
-                                        <p className="text-sm"><strong>Department:</strong> {enroll.department?.name || "N/A"}</p>
-                                        <p className="text-sm"><strong>Instructor:</strong> {enroll.instructor ? `${enroll.instructor.firstName} ${enroll.instructor.lastName}` : "N/A"}</p>
-                                        <p className="text-sm"><strong>Semester:</strong> {enroll.semester}</p>
-                                        <p className="text-sm"><strong>Grade:</strong> {enroll.grade}</p>
-                                    </div>
+            {/* Main Content */}
+            <main className="flex-1 ml-64">
+                <Header user="Student" notification={notifications} />
+
+                <div className="container mx-auto p-6 pt-10">
+                    <h2 className="text-xl font-semibold mb-6">
+                        Welcome, {dummyStudent.firstName}
+                    </h2>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Left Column – Courses */}
+                        <div className="lg:col-span-2 space-y-6">
+                            <DashboardCard title="My Enrolled Courses">
+                                {dummyStudent.enrollments.map((course, i) => (
+                                    <CourseCard
+                                        key={i}
+                                        icon={BookOpen}
+                                        courseTitle={course.title}
+                                        courseCode={course.code}
+                                        instructor={`${course.instructor.firstName} ${course.instructor.lastName}`}
+                                        semester={course.semester}
+                                        link="/student/course"
+                                    />
                                 ))}
-                            </div>
-                        )}
+                            </DashboardCard>
+                        </div>
+
+                        {/* Right Column – Notices & Activities */}
+                        <div className="lg:col-span-1 space-y-6">
+                            <DashboardCard title="Student Notice Board">
+                                <div className="grid grid-cols-2 gap-4 text-center">
+                                    <ActivityItem icon={Table} text="Timetable" link="/student/timetable" />
+                                    <ActivityItem icon={GraduationCap} text="Results" link="/student/result" />
+                                </div>
+                            </DashboardCard>
+
+                            <DashboardCard title="My Activities">
+                                <div className="grid grid-cols-2 gap-4 text-center">
+                                    <ActivityItem
+                                        icon={CheckCircle}
+                                        text="Assignments"
+                                        count={3}
+                                        link="/student/assignment"
+                                    />
+                                    <ActivityItem
+                                        icon={Notebook}
+                                        text="Quizzes"
+                                        count={1}
+                                        link="/student/quiz"
+                                    />
+                                    <ActivityItem
+                                        icon={List}
+                                        text="Attendance"
+                                        link="/student/attendance"
+                                    />
+                                    <ActivityItem
+                                        icon={MessageCircle}
+                                        text="Discussions"
+                                        link="/student/discussion"
+                                    />
+                                </div>
+                            </DashboardCard>
+                        </div>
                     </div>
                 </div>
             </main>
         </div>
-    )
+    );
 }
