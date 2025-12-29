@@ -20,6 +20,22 @@ router.get("/", async (req, res) => {
     }
 });
 
+router.get("/", async (req, res) => {
+    const { programId } = req.query;
+
+    try {
+        const { rows } = await pool.query(
+            `SELECT id, title
+       FROM batches
+       WHERE program_id = $1`,
+            [programId]
+        );
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET single batch by id
 router.get("/:id", async (req, res) => {
     const { id } = req.params;

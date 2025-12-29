@@ -171,6 +171,14 @@ const AdminDashboard = () => {
                                 />
 
                                 <QuickActionButton
+                                    title="Manage Semester Course Assignment"
+                                    icon={<Building2 size={32} />}
+                                    href="/admin/semester-course-assignment"
+                                    bgColor={`bg-primary/50`}
+                                    hoverBgColor={`hover:bg-primary/20`}
+                                />
+
+                                <QuickActionButton
                                     title="Manage Course Registration"
                                     icon={<Building2 size={32} />}
                                     href="/admin/registration-request"
@@ -186,7 +194,7 @@ const AdminDashboard = () => {
                                     hoverBgColor={`hover:bg-primary/20`}
                                 />
 
-                                <QuickActionButton
+                                {/* <QuickActionButton
                                     title="Manage Students"
                                     icon={<GraduationCap size={32} />}
                                     href="/admin/student"
@@ -200,7 +208,7 @@ const AdminDashboard = () => {
                                     href="/admin/instructor"
                                     bgColor={`bg-primary/50`}
                                     hoverBgColor={`hover:bg-primary/20`}
-                                />
+                                /> */}
 
                                 <div className="hidden lg:block"></div>
                             </div>

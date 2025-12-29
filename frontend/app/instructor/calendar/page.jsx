@@ -3,7 +3,7 @@ import Link from "next/link";
 import Header from "../../header/Header";
 import NavBar from "../../navbar/NavBar";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Bell, ChevronLeft, ChevronRight, PlusCircle, Clock, MapPin, Save, X
 } from "lucide-react";
@@ -52,12 +52,19 @@ const getCalendarDays = (date) => {
 };
 
 export default function Calendar() {
-
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [events, setEvents] = React.useState(MOCK_EVENTS);
     const [selectedDate, setSelectedDate] = React.useState(formatDate(new Date()));
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [newEvent, setNewEvent] = React.useState({ title: "", time: "", location: "" });
+    const [userId, setUserId] = useState(null)
+
+    const userType = "Instructor"
+
+    useEffect(() => {
+        const storeid = localStorage.getItem("userId")
+        setUserId(storeid)
+    }, [])
 
     const eventsOnSelectedDay = events
         .filter(e => e.date === selectedDate)
@@ -72,7 +79,7 @@ export default function Calendar() {
                 const year = currentDate.getFullYear();
 
                 const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType.toLowerCase()}s/${userId}/calendar?month=${month}&year=${year}`
+                    `${process.env.NEXT_PUBLIC_API_URL}/${userType.toLowerCase()}s/${userId}/calendar?month=${month}&year=${year}`
                 );
                 const data = await response.json();
 

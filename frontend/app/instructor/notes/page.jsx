@@ -5,36 +5,7 @@ import { PlusCircle, Edit, Trash2, FileText, X } from "lucide-react";
 import NavBar from "../../navbar/NavBar";
 import Header from "../../header/Header";
 import { useRouter } from "next/navigation";
-
-/* ------------------ DUMMY DATA ------------------ */
-
-const INSTRUCTOR_COURSES = [
-    "Web Engineering",
-    "Database Systems",
-    "Artificial Intelligence",
-];
-
-const DUMMY_RESOURCES = [
-    {
-        id: 1,
-        course: "Web Engineering",
-        title: "React Basics",
-        type: "Lecture",
-        fileName: "react-basics.pdf",
-        fileUrl: "/dummy/react-basics.pdf",
-        uploadedOn: "12 Dec 2024",
-    },
-    {
-        id: 2,
-        course: "Web Engineering",
-        title: "Mid Term Assignment",
-        type: "Assignment",
-        fileName: "assignment-1.pdf",
-        fileUrl: "/dummy/assignment-1.pdf",
-        uploadedOn: "18 Dec 2024",
-    },
-];
-
+import { useEffect } from "react";
 
 /* ------------------ BADGE COMPONENT ------------------ */
 
@@ -55,12 +26,12 @@ const ResourceBadge = ({ type }) => {
 /* ------------------ MAIN PAGE ------------------ */
 
 export default function CourseContentManager() {
-    const [selectedCourse, setSelectedCourse] = useState(INSTRUCTOR_COURSES[0]);
-    const [resources, setResources] = useState(DUMMY_RESOURCES);
+    const [selectedCourse, setSelectedCourse] = useState();
+    const [resources, setResources] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingResource, setEditingResource] = useState(null);
-
-    const router = useRouter()
+    const [userId, setUserId] = useState(null)
+    const [courses, setCourses] = useState([])
 
     const [formData, setFormData] = useState({
         title: "",
@@ -70,18 +41,62 @@ export default function CourseContentManager() {
         fileName: "",      // Display name
     });
 
-    const filteredResources = resources.filter(
-        (res) => res.course === selectedCourse
-    );
+    const router = useRouter()
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL
+
+    useEffect(() => {
+        const storeId = localStorage.getItem("userId")
+        setUserId(storeId)
+    }, [])
+
+
+    useEffect(() => {
+        if (!userId) return;
+        const fetchCourses = async () => {
+            const res = await fetch(`${API_URL}/course-assignments/instructor/${userId}`)
+            const data = await res.json();
+            setCourses(data)
+        }
+        fetchCourses()
+    }, [userId])
+
+    useEffect(() => {
+        if (!selectedCourse) return;
+
+        const fetchResources = async () => {
+            const res = await fetch(
+                `${API_URL}/resources/course/${selectedCourse}`
+            );
+            const data = await res.json();
+
+            const formatted = data.map((r) => ({
+                id: r.id,
+                title: r.title,
+                type: r.type,
+                fileName: r.file_name,
+                courseId: r.course_id,
+                fileUrl: r.file_path,
+                uploadedOn: new Date(r.uploaded_at).toDateString(),
+            }));
+
+            console.log(formatted)
+            setResources(formatted);
+        };
+
+        fetchResources();
+    }, [selectedCourse]);
+
 
     /* ------------------ HANDLERS ------------------ */
 
     const handleOpenModal = () => {
         setEditingResource(null);
-        setFormDatauseState({
+        setFormData({
             title: "",
             type: "Lecture",
-            file: null,        // File object
+            file: null,     
+            courseId: null,
             fileUrl: "",       // Object URL
             fileName: "",      // Display name
         });
@@ -101,41 +116,45 @@ export default function CourseContentManager() {
         setIsModalOpen(true);
     };
 
-    const handleDeleteResource = (id) => {
-        setResources(resources.filter((r) => r.id !== id));
+    const handleDeleteResource = async (id) => {
+        await fetch(`${API_URL}/resources/${id}`, { method: "DELETE" });
+        setResources(resources.filter(r => r.id !== id));
     };
 
-    const handleSubmit = (e) => {
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const resourcePayload = {
-            title: formData.title,
-            type: formData.type,
-            fileName: formData.fileName,
-            fileUrl: formData.fileUrl,
-            course: selectedCourse,
-            uploadedOn: new Date().toDateString(),
-        };
+        const form = new FormData();
+        form.append("course_id", selectedCourse);
+        form.append("title", formData.title);
+        form.append("type", formData.type);
+        if (formData.file) form.append("file", formData.file);
+        console.log(form)
 
-        if (editingResource) {
-            setResources(
-                resources.map((r) =>
-                    r.id === editingResource.id
-                        ? { ...r, ...resourcePayload }
-                        : r
-                )
-            );
-        } else {
-            setResources([
-                ...resources,
-                {
-                    id: Date.now(),
-                    ...resourcePayload,
-                },
-            ]);
-        }
+        const url = editingResource
+            ? `${API_URL}/resources/${editingResource.id}`
+            : `${API_URL}/resources`;
+
+        const method = editingResource ? "PUT" : "POST";
+
+        await fetch(url, { method, body: form });
 
         setIsModalOpen(false);
+        setEditingResource(null);
+        setFormData({ title: "", type: "Lecture", file: null });
+
+        // reload
+        const res = await fetch(`${API_URL}/resources/course/${selectedCourse}`);
+        const data = await res.json();
+        setResources(data.map(r => ({
+            id: r.id,
+            title: r.title,
+            type: r.type,
+            fileName: r.file_name,
+            fileUrl: r.file_path,
+            uploadedOn: new Date(r.uploaded_at).toDateString(),
+        })));
     };
 
     /* ------------------ UI ------------------ */
@@ -161,11 +180,14 @@ export default function CourseContentManager() {
                         <label className="font-semibold text-gray-700">Course</label>
                         <select
                             value={selectedCourse}
-                            onChange={(e) => setSelectedCourse(e.target.value)}
-                            className="border rounded-md px-3 py-2 text-textDark border-textDark"
+                            onChange={(e) => {setSelectedCourse(e.target.value); console.log(e.target.value)}}
+                            className="border rounded-md px-3 py-2"
                         >
-                            {INSTRUCTOR_COURSES.map((course) => (
-                                <option key={course}>{course}</option>
+                            <option value="">Select Course</option>
+                            {courses.map((course) => (
+                                <option key={course.course_id} value={course.course_id}>
+                                    {course.title}
+                                </option>
                             ))}
                         </select>
                     </div>
@@ -182,14 +204,14 @@ export default function CourseContentManager() {
                 <div className="bg-white rounded-lg shadow overflow-hidden">
                     <div className="px-5 py-4 border-b flex justify-between items-center">
                         <h2 className="font-semibold text-gray-800">
-                            {selectedCourse} Resources
+                         Resources
                         </h2>
                         <span className="text-sm text-gray-500">
-                            {filteredResources.length} items
+                            {resources.length} items
                         </span>
                     </div>
 
-                    {filteredResources.length === 0 ? (
+                    {resources.length === 0 ? (
                         <div className="p-10 text-center text-gray-600">
                             <FileText size={40} className="mx-auto mb-3 opacity-40" />
                             No resources uploaded
@@ -208,7 +230,7 @@ export default function CourseContentManager() {
                                 </thead>
 
                                 <tbody className="divide-y text-primary/90">
-                                    {filteredResources.map((resource) => (
+                                    {resources.map((resource) => (
                                         <tr key={resource.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-3 font-medium">
                                                 {resource.title}
@@ -220,7 +242,7 @@ export default function CourseContentManager() {
 
                                             <td className="px-6 py-3">
                                                 <a
-                                                    href={resource.fileUrl}
+                                                    href={`http://localhost:5000/${resource.fileUrl}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-600 hover:underline font-medium"

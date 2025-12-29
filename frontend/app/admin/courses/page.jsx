@@ -14,21 +14,27 @@ const initialNotifications = [
   { id: 1, text: "New course added", isRead: false, type: "general" },
 ];
 
-const initialCourses = [
-  { _id: "c1", title: "Introduction to Programming", code: "CS101", creditHours: 3 },
-  { _id: "c2", title: "Data Structures", code: "CS201", creditHours: 4 },
-];
-
 export default function AdminCourseManagement() {
   const [courses, setCourses] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isEdit, setIsEdit] = useState(false);
 
-  const [updateData, setUpdateData] = useState({ _id: "", title: "", code: "", creditHours: "" });
+  const [updateData, setUpdateData] = useState({ id: "", title: "", code: "", creditHours: "" });
   const [newCourse, setNewCourse] = useState({ title: "", code: "", creditHours: "" });
 
   useEffect(() => {
-    setCourses(initialCourses);
+    fetch("http://localhost:5000/api/courses")
+      .then(res => res.json())
+      .then(data =>
+        setCourses( data?
+          data.map(c => ({
+            id: c.id,
+            title: c.title,
+            code: c.code,
+            creditHours: c.credit_hours,
+          })) : []
+        )
+      );
   }, []);
 
   const filteredCourses = courses.filter(
@@ -38,35 +44,66 @@ export default function AdminCourseManagement() {
       c.creditHours.toString().includes(searchTerm)
   );
 
-  const handleAddCourse = (e) => {
+  const handleAddCourse = async (e) => {
     e.preventDefault();
-    setCourses([
-      ...courses,
-      { ...newCourse, _id: Date.now().toString(), creditHours: Number(newCourse.creditHours) },
-    ]);
+
+    const res = await fetch("http://localhost:5000/api/courses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newCourse),
+    });
+
+    const data = await res.json();
+
+    setCourses([...courses, {
+      id: data.id,
+      title: data.title,
+      code: data.code,
+      creditHours: data.credit_hours,
+    }]);
+
     setNewCourse({ title: "", code: "", creditHours: "" });
   };
+
 
   const handleUpdateCourse = (course) => {
     setIsEdit(true);
     setUpdateData({ ...course, creditHours: course.creditHours.toString() });
   };
 
-  const handleUpdateSubmit = (e) => {
+  const handleUpdateSubmit = async (e) => {
     e.preventDefault();
-    const updatedList = courses.map((c) =>
-      c._id === updateData._id
-        ? { ...updateData, creditHours: Number(updateData.creditHours) }
-        : c
+    console.log(updateData)
+
+    const res = await fetch(
+      `http://localhost:5000/api/courses/${updateData.id}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updateData),
+      }
     );
-    setCourses(updatedList);
+
+    const data = await res.json();
+
+    setCourses(courses.map(c =>
+      c.id === data.id
+        ? { ...c, ...updateData }
+        : c
+    ));
+
     setIsEdit(false);
   };
 
-  const handleDeleteCourse = (id) => {
-    if (confirm("Are you sure? This action cannot be undone.")) {
-      setCourses(courses.filter((c) => c._id !== id));
-    }
+
+  const handleDeleteCourse = async (id) => {
+    if (!confirm("Are you sure?")) return;
+
+    await fetch(`http://localhost:5000/api/courses/${id}`, {
+      method: "DELETE",
+    });
+
+    setCourses(courses.filter(c => c.id !== id));
   };
 
   const formData = isEdit ? updateData : newCourse;
@@ -78,7 +115,7 @@ export default function AdminCourseManagement() {
 
   return (
     <div className="flex bg-light min-h-screen text-primary">
-            <NavBar userType={"Admin"} />
+      <NavBar userType={"Admin"} />
       <main className="flex-1 ml-64">
         <Header user="Admin" notification={initialNotifications} />
 
@@ -179,7 +216,7 @@ export default function AdminCourseManagement() {
                           <Edit size={18} />
                         </button>
                         <button
-                          onClick={() => handleDeleteCourse(c._id)}
+                          onClick={() => handleDeleteCourse(c.id)}
                           className="text-accentDark hover:text-accent"
                         >
                           <Trash2 size={18} />

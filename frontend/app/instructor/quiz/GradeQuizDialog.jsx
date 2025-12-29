@@ -6,22 +6,27 @@ import { Download } from "lucide-react";
 
 const MAX_MARKS = 10;
 
-const MOCK_SUBMISSIONS = [
-  { id: 101, studentName: "Ali Raza", submissionStatus: "Submitted", submittedOn: "Nov 15, 2025", fileLink: "#", grade: null, feedback: "" },
-  { id: 102, studentName: "Zainab Khan", submissionStatus: "Submitted", submittedOn: "Nov 16, 2025", fileLink: "#", grade: null, feedback: "" },
-  { id: 103, studentName: "Sana Malik", submissionStatus: "Graded", submittedOn: "Nov 10, 2025", fileLink: "#", grade: 9.5, feedback: "Excellent use of conditional logic." },
-  { id: 104, studentName: "Fahad Ahmed", submissionStatus: "Not Submitted", submittedOn: null, fileLink: null, grade: null, feedback: "" },
-];
-
-export default function GradeQuizModal({ isOpen, onClose }) {
-  const [submissions, setSubmissions] = useState(MOCK_SUBMISSIONS);
+export default function GradeQuizModal({ isOpen, onClose, quizId }) {
+  const [submissions, setSubmissions] = useState([]);
   const [selectedId, setSelectedId] = useState(
     submissions.find(s => s.grade === null && s.submissionStatus === "Submitted")?.id ?? null
   );
 
+  console.log(quizId)
   const selectedSubmission = submissions.find(s => s.id === selectedId);
   const [currentGrade, setCurrentGrade] = useState(selectedSubmission?.grade ?? "");
   const [currentFeedback, setCurrentFeedback] = useState(selectedSubmission?.feedback ?? "");
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  
+  useEffect(() => {
+    if (!quizId || !isOpen) return;
+
+    fetch(`${API_URL}/quiz-submissions/quiz/${quizId}`)
+      .then(res => res.json())
+      .then(setSubmissions)
+      .catch(console.error);
+  }, [quizId, isOpen]);
 
   useEffect(() => {
     if (selectedSubmission) {
@@ -33,7 +38,7 @@ export default function GradeQuizModal({ isOpen, onClose }) {
     }
   }, [selectedSubmission]);
 
-  const handleGradeSubmit = (e) => {
+  const handleGradeSubmit = async (e) => {
     e.preventDefault();
     if (!selectedSubmission) return;
 
@@ -43,13 +48,14 @@ export default function GradeQuizModal({ isOpen, onClose }) {
       return;
     }
 
-    const updatedSubmissions = submissions.map(s =>
-      s.id === selectedSubmission.id
-        ? { ...s, grade: gradeValue, feedback: currentFeedback, submissionStatus: "Graded" }
-        : s
-    );
-    setSubmissions(updatedSubmissions);
-    alert(`Grade submitted for ${selectedSubmission.studentName}!`);
+    await fetch(`${API_URL}/quiz-submissions/${selectedSubmission.id}/grade`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grade: currentGrade,
+        feedback: currentFeedback
+      })
+    });
 
     // Automatically select next ungraded submission
     const nextUngraded = updatedSubmissions.find(s => s.grade === null && s.submissionStatus === "Submitted");

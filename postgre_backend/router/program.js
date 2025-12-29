@@ -34,6 +34,22 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/", async (req, res) => {
+  const { departmentId } = req.query;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, title
+       FROM programs
+       WHERE department_id = $1`,
+      [departmentId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get a single program by ID
 router.get("/:id", async (req, res) => {
   const { id } = req.params;

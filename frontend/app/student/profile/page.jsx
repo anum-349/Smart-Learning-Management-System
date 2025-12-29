@@ -1,222 +1,192 @@
 "use client";
 
-import React, { useState } from "react";
-import { User, Mail, Phone, Calendar, Edit, Save, X } from "lucide-react";
-import Header from "@/app/header/Header";
+import { useEffect, useState } from "react";
+import { Pencil, Save, X } from "lucide-react";
 import NavBar from "../../navbar/NavBar";
+import Header from "../../header/Header";
+import { useRouter } from "next/navigation";
 
-const MOCK_STUDENT_PROFILE = {
-  userName: "alexjohnson",
-  firstName: "Alex",
-  lastName: "Johnson",
-  fatherName: "Robert Johnson",
-  email: "alex.johnson@uni.edu",
-  phone: 3031234567,
-  gender: "Male",
-  dateOfBirth: "2001-05-15T00:00:00.000Z",
-  address: "123 University Road, Cityville, Country",
-  profilePicture: "https://randomuser.me/api/portraits/men/45.jpg",
-  registrationNo: "FA21-BSE-045",
-};
+export default function StudentProfilePage() {
+  const [data, setData] = useState({});
+  const [editMode, setEditMode] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [userId, setUserId] = useState(null);
 
-const StudentProfile = () => {
-  const [student, setStudent] = useState(MOCK_STUDENT_PROFILE);
-  const [formData, setFormData] = useState(MOCK_STUDENT_PROFILE);
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const Api_URL = process.env.NEXT_PUBLIC_API_URL;
+  const router = useRouter();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handlePictureChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setFormData({ ...formData, profilePicture: url });
+  /* ================== FETCH STUDENT DETAILS ================== */
+  const fetchStudentDetails = async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`${Api_URL}/students/profile/${userId}`);
+      const data = await res.json();
+      setData(data);
+      setImagePreview(
+        data.profile_picture
+          ? `${Api_URL}/${data.profile_picture}`
+          : null
+      );
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleSave = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setStudent(formData);
-      setIsEditing(false);
-      setIsLoading(false);
-      alert("Profile updated successfully!");
-    }, 1000);
+  useEffect(() => {
+    const storedUserId = localStorage.getItem("userId");
+    setUserId(storedUserId);
+  }, []);
+
+  useEffect(() => {
+    fetchStudentDetails();
+  }, [userId]);
+
+  /* ================== HANDLERS ================== */
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    const formData = new FormData();
+
+    console.log(data)
+    Object.entries(data).forEach(([key, value]) => formData.append(key, value));
+
+    if (imageFile) {
+      formData.append("profile_picture", imageFile);
+    }
+
+    try {
+      await fetch(`${Api_URL}/students/profile/${userId}`, {
+        method: "PUT",
+        body: formData,
+      });
+      setEditMode(false);
+      fetchStudentDetails();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-light text-gray-900">
+    <div className="flex min-h-screen bg-gray-100">
       <NavBar userType="Student" />
       <main className="flex-1 ml-64">
         <Header user="Student" notification={[]} />
 
-        <div className="max-w-4xl m-5 mx-auto bg-white rounded-xl shadow-lg border border-gray-200 p-6 space-y-6">
-          {/* Profile Header */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Student Profile</h1>
-            <button
-              onClick={() => setIsEditing(!isEditing)}
-              className="flex items-center gap-2 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accentDark transition"
-            >
-              {isEditing ? <X size={16} /> : <Edit size={16} />}
-              {isEditing ? "Cancel" : "Edit Profile"}
-            </button>
-          </div>
+        <div className="text-sm pl-5 pt-5 text-gray-600 mb-6">
+          <span
+            onClick={() => router.push("/student")}
+            className="cursor-pointer hover:text-primary"
+          >
+            Dashboard
+          </span>
+          <span className="mx-2">/</span>
+          <span className="font-medium text-gray-900">Profile</span>
+        </div>
 
-          {/* Profile Picture */}
-          <div className="flex flex-col items-center md:flex-row gap-6">
-            <img
-              src={formData.profilePicture}
-              alt="Profile"
-              className="w-32 h-32 rounded-full object-cover border-2 border-accent"
-            />
-            {isEditing && (
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePictureChange}
-                className="mt-2 md:mt-0"
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
+          {/* PROFILE CARD */}
+          <div className="bg-white rounded-xl shadow-sm border p-6 flex items-center gap-6">
+            <div className="relative">
+              <img
+                src={imagePreview || "https://via.placeholder.com/120"}
+                alt="Student"
+                width={120}
+                height={120}
+                className="rounded-sm object-cover border"
               />
+              {editMode && (
+                <label className="absolute bottom-2 right-2 bg-primary text-white p-2 rounded-full cursor-pointer">
+                  <Pencil size={16} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
+                </label>
+              )}
+            </div>
+
+            {/* BASIC INFO */}
+            <div className="flex-1 text-textDark">
+              <h2 className="text-xl font-semibold">{data.username}</h2>
+              <p className="text-sm text-gray-700">{data.fullname}</p>
+              <p className="text-sm text-gray-500">{data.registration_no}</p>
+            </div>
+
+            {/* ACTION BUTTONS */}
+            {!editMode ? (
+              <button
+                onClick={() => setEditMode(true)}
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-primary text-white rounded-md"
+              >
+                <Pencil size={16} /> Edit
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSave}
+                  className="flex items-center gap-2 px-4 py-2 text-sm bg-accentDark hover:bg-accent text-white rounded-md"
+                >
+                  <Save size={16} /> Save
+                </button>
+                <button
+                  onClick={() => setEditMode(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm bg-primary hover:bg-primary/55 rounded-md"
+                >
+                  <X size={16} /> Cancel
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Profile Info Form */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* First Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">First Name</label>
-              <input
-                type="text"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={`mt-1 block w-full rounded-lg border p-2 ${
-                  isEditing ? "border-accent bg-white" : "border-gray-200 bg-gray-100 cursor-not-allowed"
-                }`}
-              />
-            </div>
+          {/* DETAILS FORM */}
+          <div className="bg-white text-textDark rounded-xl shadow-sm border p-6 grid grid-cols-2 gap-4">
+            {[
+              ["Full Name", "fullname"],
+              ["Username", "username"],
+              ["Email", "email"],
+              ["Phone", "phone"],
+              ["Address", "address"],
+              ["Gender", "gender"],
+              ["Date of Birth", "date_of_birth"],
+              ["Registration No", "registration_no"],
+            ].map(([label, field]) => (
+              <div key={field}>
+                <label className="text-xs font-medium text-gray-500">
+                  {label}
+                </label>
+                <input
+                  type={field === "date_of_birth" ? "date" : "text"}
+                  name={field}
+                  value={
+                    field === "date_of_birth" && data[field]
+                      ? data[field].split("T")[0]
+                      : data[field] ?? ""
+                  }
+                  onChange={handleChange}
+                  disabled={!editMode}
+                  className={`w-full mt-1 px-3 py-2 text-sm rounded-md border ${
+                    editMode ? "bg-white" : "bg-gray-100 cursor-not-allowed"
+                  }`}
+                />
+              </div>
+            ))}
 
-            {/* Last Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                value={formData.lastName || ""}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={`mt-1 block w-full rounded-lg border p-2 ${
-                  isEditing ? "border-accent bg-white" : "border-gray-200 bg-gray-100 cursor-not-allowed"
-                }`}
-              />
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Phone</label>
-              <input
-                type="text"
-                name="phone"
-                value={formData.phone || ""}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={`mt-1 block w-full rounded-lg border p-2 ${
-                  isEditing ? "border-accent bg-white" : "border-gray-200 bg-gray-100 cursor-not-allowed"
-                }`}
-              />
-            </div>
-
-            {/* Gender */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Gender</label>
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={`mt-1 block w-full rounded-lg border p-2 ${
-                  isEditing ? "border-accent bg-white" : "border-gray-200 bg-gray-100 cursor-not-allowed"
-                }`}
-              >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Prefer not to Say">Prefer not to Say</option>
-              </select>
-            </div>
-
-            {/* Date of Birth */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
-              <input
-                type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth?.split("T")[0] || ""}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={`mt-1 block w-full rounded-lg border p-2 ${
-                  isEditing ? "border-accent bg-white" : "border-gray-200 bg-gray-100 cursor-not-allowed"
-                }`}
-              />
-            </div>
-
-            {/* Address */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Address</label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address || ""}
-                onChange={handleChange}
-                disabled={!isEditing}
-                className={`mt-1 block w-full rounded-lg border p-2 ${
-                  isEditing ? "border-accent bg-white" : "border-gray-200 bg-gray-100 cursor-not-allowed"
-                }`}
-              />
-            </div>
-
-            {/* Read-only fields */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Registration No</label>
-              <input
-                type="text"
-                value={formData.registrationNo}
-                disabled
-                className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-100 cursor-not-allowed p-2"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                disabled
-                className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-100 cursor-not-allowed p-2"
-              />
-            </div>
           </div>
-
-          {/* Save Button */}
-          {isEditing && (
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={handleSave}
-                disabled={isLoading}
-                className="flex items-center gap-2 bg-accentDark text-white px-4 py-2 rounded-lg hover:bg-accent transition"
-              >
-                <Save size={16} />
-                {isLoading ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          )}
         </div>
       </main>
     </div>
   );
-};
-
-export default StudentProfile;
+}

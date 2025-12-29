@@ -52,13 +52,14 @@ const getCalendarDays = (date) => {
 };
 
 export default function Calendar() {
-
     const [currentDate, setCurrentDate] = React.useState(new Date());
     const [events, setEvents] = React.useState(MOCK_EVENTS);
     const [selectedDate, setSelectedDate] = React.useState(formatDate(new Date()));
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [newEvent, setNewEvent] = React.useState({ title: "", time: "", location: "" });
 
+    const userType = "Student"
+    
     const eventsOnSelectedDay = events
         .filter(e => e.date === selectedDate)
         .sort((a, b) => a.time.localeCompare(b.time));

@@ -28,6 +28,22 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/", async (req, res) => {
+  const { batchId } = req.query;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, title
+       FROM semesters
+       WHERE batch_id = $1`,
+      [batchId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* =========================
    CREATE semester
 ========================= */

@@ -4,21 +4,11 @@ import { useEffect, useState } from "react";
 import { Upload, Trash2, Calendar, CheckCircle } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 
-/* ---------- COMPONENT ---------- */
-const DUMMY_ASSIGNMENT = {
-  id: 101,
-  course: { title: "Web Development" },
-  title: "Initial Web Dev Quiz - Topic 1",
-  description: "Please review HTML fundamentals before starting.",
-  totalMarks: 50,
-  deadline: "2025-12-01",
-  fileName: "Quiz_instructions_v1.pdf",
-};
-
 export default function UpdateQuizModal({
   isOpen,
   onClose,
-  quizId,
+  quiz,
+  course
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -27,55 +17,28 @@ export default function UpdateQuizModal({
   const [description, setDescription] = useState("");
   const [totalMarks, setTotalMarks] = useState(1);
   const [deadline, setDeadline] = useState("");
+  const [quizId, setQuizId] = useState("");
 
   const [existingFile, setExistingFile] = useState(null);
   const [file, setFile] = useState(null);
 
   /* ---------- AUTO FETCH ---------- */
   useEffect(() => {
-    // if (!isOpen || !quizId) return;
+    setLoading(true)
+    setTimeout(() => {
+      setCourseTitle(course)
+      setTitle(quiz?.title)
+      setDescription(quiz?.description)
+      setTotalMarks(quiz?.total_marks)
+      const dateOnly = quiz?.deadline ? quiz.deadline.split("T")[0] : "";
+      setDeadline(dateOnly);
+      setExistingFile(quiz?.file_name)
+      setFile(null)
+      setQuizId(quiz?.id)
+      setLoading(false)
+    }, 500)
 
-        setLoading(true)
-        setTimeout(() => {
-            const data = DUMMY_ASSIGNMENT;
-            setCourseTitle(data.course.title)
-            setTitle(data.title)
-            setDescription(data.description)
-            setTotalMarks(data.totalMarks)
-            setDeadline(data.deadline)
-            setExistingFile(data.fileName)
-            setFile(null)
-
-            setLoading(false)
-        }, 500)
-
-    // const fetchQuiz = async () => {
-    //   try {
-    //     setLoading(true);
-
-    //     /* 🔹 Replace with real API */
-    //     const res = await fetch(
-    //       `/api/instructor/quizs/${quizId}`
-    //     );
-    //     const data = await res.json();
-
-    //     /* 🔹 Auto fill form */
-    //     setCourseTitle(data.course.title);
-    //     setTitle(data.title);
-    //     setDescription(data.description || "");
-    //     setTotalMarks(data.totalMarks);
-    //     setDeadline(data.deadline);
-    //     setExistingFile(data.fileName || null);
-    //     setFile(null);
-    //   } catch (err) {
-    //     console.error("Failed to load quiz", err);
-    //   } finally {
-    //     setLoading(false);
-    //   }
-    // };
-
-    // fetchQuiz();
-  }, [isOpen, quizId]);
+  }, [isOpen, quiz]);
 
   /* ---------- HANDLERS ---------- */
 
@@ -92,16 +55,15 @@ export default function UpdateQuizModal({
     const formData = new FormData();
     formData.append("title", title);
     formData.append("description", description);
-    formData.append("totalMarks", totalMarks.toString());
+    formData.append("total_marks", totalMarks.toString());
     formData.append("deadline", deadline);
     if (file) formData.append("file", file);
 
-    console.log(formData)
-    /* 🔹 Replace with real API */
-    // await fetch(`/api/instructor/quizs/${quizId}`, {
-    //   method: "PUT",
-    //   body: formData,
-    // });
+    console.log(file)
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/quiz/${quizId}`, {
+      method: "PUT",
+      body: formData,
+    });
 
     alert("✅ Quiz updated successfully");
     onClose();
@@ -156,23 +118,8 @@ export default function UpdateQuizModal({
               <input
                 type="file"
                 id="file"
-                className="hidden"
                 onChange={handleFileChange}
               />
-
-              <label
-                htmlFor="file"
-                className="cursor-pointer border border-dashed px-4 py-2 rounded-lg text-sm hover:bg-gray-50"
-              >
-                {file || existingFile ? "Change File" : "Choose File"}
-              </label>
-
-              {(file || existingFile) && (
-                <span className="text-sm text-gray-600">
-                  {file?.name || existingFile}
-                </span>
-              )}
-
               {(file || existingFile) && (
                 <Trash2
                   size={16}

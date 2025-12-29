@@ -4,6 +4,8 @@ import { Bell } from "lucide-react";
 import Header from "../../header/Header";
 import NavBar from "../../navbar/NavBar";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useEffect } from "react";
 
 const DayCard = ({ day, data }) => (
     <div className="bg-white rounded-xl border shadow-sm mb-8">
@@ -17,8 +19,6 @@ const DayCard = ({ day, data }) => (
                     <tr>
                         <th className="px-6 py-3 text-left">Time</th>
                         <th className="px-6 py-3 text-left">Course</th>
-                        <th className="px-6 py-3 text-left">Section</th>
-                        <th className="px-6 py-3 text-left">Lab Share</th>
                         <th className="px-6 py-3 text-left">Venue</th>
                     </tr>
                 </thead>
@@ -26,10 +26,8 @@ const DayCard = ({ day, data }) => (
                 <tbody className="divide-y">
                     {data.map((row, idx) => (
                         <tr key={idx} className="hover:bg-gray-50">
-                            <td className="px-6 py-3">{row.time}</td>
-                            <td className="px-6 py-3 font-medium">{row.course}</td>
-                            <td className="px-6 py-3">{row.section}</td>
-                            <td className="px-6 py-3">{row.labShare}</td>
+                            <td className="px-6 py-3">{row.slot}</td>
+                            <td className="px-6 py-3 font-medium">{row.course_name}</td>
                             <td className="px-6 py-3">{row.venue}</td>
                         </tr>
                     ))}
@@ -45,15 +43,25 @@ const initialNotifications = [
 
 export default function Timetable() {
     const [timetable, setTimetable] = useState([]);
+    const [userId, setUserId] = useState(null);
+    const order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
     const router = useRouter();
 
     useEffect(() => {
+        const storeid = localStorage.getItem("userId")
+        setUserId(storeid)
+    }, [])
+    useEffect(() => {
+        if (!userId) return;
+
         const fetchTimetable = async () => {
             try {
                 const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/instructors/${userId}/timetable`
+                    `${process.env.NEXT_PUBLIC_API_URL}/timetable/user/${userId}`
                 );
                 const data = await res.json();
+                console.log(data)
                 setTimetable(data);
             } catch (err) {
                 console.error("Failed to fetch timetable:", err);
@@ -68,6 +76,11 @@ export default function Timetable() {
         acc[item.day].push(item);
         return acc;
     }, {});
+    console.log(timetable.reduce((acc, item) => {
+        acc[item.day] = acc[item.day] || [];
+        acc[item.day].push(item);
+        return acc;
+    }, {}))
 
     return (
         <div className="flex bg-light min-h-screen text-primary">
@@ -89,9 +102,12 @@ export default function Timetable() {
                 <div className="min-h-screen bg-gray-100">
                     {/* CONTENT */}
                     <div className="max-w-7xl mx-auto px-6 pb-10">
-                        {Object.keys(grouped).map((day) => (
-                            <DayCard key={day} day={day} data={grouped[day]} />
-                        ))}
+                        {order.map((day) => {
+                            if (grouped[day]) {
+                                return <DayCard key={day} day={day} data={grouped[day]} />;
+                            }
+                            return null;
+                        })}
                     </div>
                 </div>
             </main>

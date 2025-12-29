@@ -41,6 +41,8 @@ export default function LoginPage() {
 
             // ✅ Save JWT
             localStorage.setItem("lms_token", data.token);
+            localStorage.setItem("userId", data.id);
+            localStorage.setItem("userEmail", data.email);
             localStorage.setItem("lms_role", data.role);
 
             // ✅ Redirect by role

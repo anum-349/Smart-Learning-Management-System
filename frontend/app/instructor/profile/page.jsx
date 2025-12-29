@@ -1,32 +1,47 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import { Pencil, Save, X } from "lucide-react";
 import NavBar from "../../navbar/NavBar";
 import Header from "../../header/Header";
-
-const initialData = {
-    firstName: "Theresa",
-    lastName: "Flores",
-    userName: "theresa.f",
-    email: "theresaflores@voit.team",
-    phone: "03123456789",
-    gender: "Female",
-    address: "Melbourne, Australia",
-    rank: "Professor",
-    officeTiming: "9:00 AM – 2:00 PM",
-    employmentTypeId: "Permanent",
-    researchSpeciality: "Academic Studies",
-    department: "Computer Science",
-    profilePicture: "/teacher.jpg",
-};
+import { useRouter } from "next/navigation";
 
 export default function InstructorProfilePage() {
-    const [data, setData] = useState(initialData);
+    const [data, setData] = useState({});
     const [editMode, setEditMode] = useState(false);
-    const [imagePreview, setImagePreview] = useState(initialData.profilePicture);
+    const [imagePreview, setImagePreview] = useState(null);
     const [imageFile, setImageFile] = useState(null);
+    const [userId, setUserId] = useState(null);
+
+    const Api_URL = process.env.NEXT_PUBLIC_API_URL;
+
+    const router = useRouter()
+
+    const fetchInstructorDetails = async () => {
+        try {
+            const res = await fetch(`${Api_URL}/registration/instructor/profile/${userId}`);
+            const data = await res.json();
+            setData(data)
+            setImagePreview(
+                data.profile_picture
+                    ? `http://localhost:5000/${data.profile_picture}`
+                    : null
+            );
+            console.log(data)
+        } catch (err) {
+            console.error(err)
+        }
+    }
+
+    useEffect(() => {
+        const storedUserId = localStorage.getItem("userId");
+        setUserId(storedUserId);
+    }, [])
+
+    useEffect(()=>{
+        if (!userId) return;
+        fetchInstructorDetails();
+    }, [userId])
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -41,16 +56,27 @@ export default function InstructorProfilePage() {
         setImagePreview(URL.createObjectURL(file));
     };
 
-    const handleSave = () => {
-        /*
-          Send to backend using FormData:
-          - text fields
-          - imageFile
-        */
-        console.log("UPDATED DATA:", data);
-        console.log("IMAGE FILE:", imageFile);
+    const handleSave = async () => {
+        const formData = new FormData();
 
-        setEditMode(false);
+        Object.entries(data).forEach(([key, value]) =>
+            formData.append(key, value)
+        );
+
+        if (imageFile) {
+            formData.append("profile_picture", imageFile);
+        }
+
+        try {
+            await fetch(`${Api_URL}/registration/instructor/profile/${userId}`, {
+                method: "PUT",
+                body: formData,
+            });
+            setEditMode(false);
+            fetchInstructorDetails();
+        } catch (err) {
+            console.log(err)
+        }
     };
 
     return (
@@ -77,12 +103,13 @@ export default function InstructorProfilePage() {
                         <div className="flex items-center gap-6">
                             {/* PROFILE IMAGE */}
                             <div className="relative">
-                                <Image
+
+                                <img
                                     src={imagePreview}
                                     alt="Instructor"
                                     width={120}
                                     height={120}
-                                    className="rounded-lg object-cover border"
+                                    className="rounded-sm object-cover border"
                                 />
 
                                 {editMode && (
@@ -103,7 +130,7 @@ export default function InstructorProfilePage() {
                             {/* BASIC INFO */}
                             <div className="flex-1 text-textDark">
                                 <h2 className="text-xl font-semibold">
-                                    {data.firstName} {data.lastName}
+                                    {data.username}
                                 </h2>
                                 <p className="text-sm text-gray-700">{data.rank}</p>
                                 <p className="text-sm text-gray-500">{data.department}</p>
@@ -139,15 +166,14 @@ export default function InstructorProfilePage() {
                     {/* DETAILS FORM */}
                     <div className="bg-white text-textDark mt-6 rounded-xl shadow-sm border p-6 grid grid-cols-2 gap-4">
                         {[
-                            ["First Name", "firstName"],
-                            ["Last Name", "lastName"],
-                            ["Username", "userName"],
+                            ["Full Name", "fullname"],
+                            ["Username", "username"],
                             ["Email", "email"],
                             ["Phone", "phone"],
                             ["Address", "address"],
                             ["Rank", "rank"],
-                            ["Office Timing", "officeTiming"],
-                            ["Research Speciality", "researchSpeciality"],
+                            ["Office Timing", "office_timing"],
+                            ["Research Speciality", "research_speciality"],
                         ].map(([label, field]) => (
                             <div key={field}>
                                 <label className="text-xs font-medium text-gray-500">
@@ -155,7 +181,7 @@ export default function InstructorProfilePage() {
                                 </label>
                                 <input
                                     name={field}
-                                    value={data[field]}
+                                    value={data[field] ?? ""}
                                     onChange={handleChange}
                                     disabled={!editMode}
                                     className={`w-full mt-1 px-3 py-2 text-sm rounded-md border 
@@ -171,7 +197,7 @@ export default function InstructorProfilePage() {
                             </label>
                             <select
                                 name="employmentTypeId"
-                                value={data.employmentTypeId}
+                                value={data.employment_type}
                                 onChange={handleChange}
                                 disabled={!editMode}
                                 className="w-full mt-1 px-3 py-2 text-sm rounded-md border bg-white"

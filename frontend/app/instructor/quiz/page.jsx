@@ -7,70 +7,88 @@ import { useState } from "react";
 import CreateQuizDialog from './CreateQuizDialog'
 import UpdateQuizModal from "./UpdateQuizDialog";
 import GradeQuizModal from "./GradeQuizDialog";
+import { useEffect } from "react";
 
 const initialNotifications = [
     { id: 1, text: "New course added", isRead: false, type: "general" },
 ];
 
-const coursesData = [
-    {
-        course: "Programming Fundamental",
-        quizsData: [
-            {
-                id: 1,
-                title: "Hands-on Exercise No. 1",
-                file: "file.pdf",
-                dueDate: "Nov 14, 2025",
-                totalStudents: 30,
-                submissions: 10,
-                fileSize: "1404.61 KB",
-                totalMarks: 10.0,
-            },
-            {
-                id: 2,
-                title: "Hands-on Exercise No. 2",
-                file: "file.pdf",
-                dueDate: "Nov 14, 2025",
-                totalStudents: 30,
-                submissions: 20,
-                fileSize: "1086.99 KB",
-                totalMarks: 10.0,
-            },
-        ],
-    },
-    {
-        course: "OOD",
-        quizsData: [
-            {
-                id: 1,
-                title: "Hands-on Exercise No. 1",
-                file: "file.pdf",
-                dueDate: "Nov 14, 2025",
-                totalStudents: 30,
-                submissions: 10,
-                fileSize: "1404.61 KB",
-                totalMarks: 10.0,
-            },
-            {
-                id: 2,
-                title: "Hands-on Exercise No. 2",
-                file: "file.pdf",
-                dueDate: "Nov 14, 2025",
-                totalStudents: 30,
-                submissions: 20,
-                fileSize: "1086.99 KB",
-                totalMarks: 10.0,
-            },
-        ],
-    },
-];
 
 export default function Quizs() {
     const router = useRouter();
-    const [open, setOpen] = useState(false)
 
-    const handleDelete = () => {
-        alert("Delete an quiz.");
+    const [courses, setCourses] = useState([]);
+    const [courseQuizzes, setCourseQuizzes] = useState({});
+    const [selectedCourse, setSelectedCourse] = useState(null);
+    const [selectedQuiz, setSelectedQuiz] = useState(null);
+    const [openCreate, setOpenCreate] = useState(false);
+    const [openUpdate, setOpenUpdate] = useState(false);
+    const [openGrade, setOpenGrade] = useState(false);
+    const [userId, setUserId] = useState(null);
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL
+
+    useEffect(() => {
+        const storedId = localStorage.getItem("userId");
+        if (storedId) setUserId(storedId);
+    }, []);
+
+    useEffect(() => {
+        if (!userId) return;
+        const fetchCourses = async () => {
+            try {
+                const res = await fetch(`${API_URL}/course-assignments/instructor/${userId}`)
+                const data = await res.json()
+                console.log(data)
+                setCourses(data)
+            } catch (err) {
+                console.log(err)
+            }
+        }
+        fetchCourses()
+    }, [userId])
+
+    const fetchAllQuizzes = async () => {
+        const quizzesMap = {};
+        for (const course of courses) {
+            try {
+                const res = await fetch(`${API_URL}/quiz/course/${course.course_id}`);
+                const data = await res.json();
+                console.log(data)
+                quizzesMap[course.course_id] = data;
+            } catch (err) {
+                console.error(`Error fetching quizzes for course ${course.course_id}:`, err);
+                quizzesMap[course.course_id] = [];
+            }
+        }
+        setCourseQuizzes(quizzesMap);
+    };
+
+    useEffect(() => {
+        if (!courses.length) return;
+        fetchAllQuizzes();
+    }, [courses]);
+
+    const handleDelete = async (quizId, courseId) => {
+        if (!confirm("Are you sure you want to delete this quiz?")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/quiz/${quizId}`, {
+                method: "DELETE",
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to delete quiz");
+            }
+
+            fetchAllQuizzes()
+
+            alert("✅ Quiz deleted successfully");
+        } catch (err) {
+            console.error(err);
+            alert("❌ " + err.message);
+        }
     };
 
     return (
@@ -89,22 +107,25 @@ export default function Quizs() {
                     <span className="font-medium text-gray-900">Quizs</span>
                 </div>
 
-                {coursesData.map((course, idx) => (
+                {courses.map((course, idx) => (
                     <div key={idx} className="mb-10 ml-5 mr-5">
 
                         {/* Course Header */}
                         <div className="bg-primary text-white rounded-t-xl px-6 py-4 flex justify-between items-center">
-                            <h2 className="text-xl font-semibold">{course.course}</h2>
+                            <h2 className="text-xl font-semibold">{course.title}</h2>
                             <button
-                                onClick={() => setOpen(true)}
+                                onClick={() => {
+                                    setSelectedCourse({title: course.title,courseId: course.course_id});
+                                    setOpenCreate(true);
+                                }}
                                 className="bg-[#354538] px-4 py-2 rounded"
-                            >
-                                Create Quiz
+                            >Create Quiz
                             </button>
-
                             <CreateQuizDialog
-                                isOpen={open}
-                                onClose={() => setOpen(false)}
+                                isOpen={openCreate}
+                                courseId={selectedCourse?.courseId}
+                                courseTitle={selectedCourse?.title}
+                                onClose={() => { setOpenCreate(false); fetchAllQuizzes() }}
                             />
                         </div>
 
@@ -125,20 +146,29 @@ export default function Quizs() {
                                 </thead>
 
                                 <tbody className="divide-y">
-                                    {course.quizsData.map((quiz) => (
+                                    {(courseQuizzes[course.course_id] || []).map((quiz) => (
                                         <tr key={quiz.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 font-medium">
                                                 {quiz.title}
                                             </td>
 
-                                            <td className="px-6 py-4 text-blue-600">
-                                                <a href="#" className="hover:underline">
-                                                    View File
+                                            <td className="px-6 py-4 text-blue-600 w-64 text-sm">
+                                                <a href={`http://localhost:5000/${quiz.file_path}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="hover:underline">
+                                                    {quiz.file_name}
                                                 </a>
                                             </td>
 
-                                            <td className="px-6 py-4 text-gray-700">
-                                                {quiz.dueDate}
+                                            <td className="px-6 w-full py-4 text-gray-700">
+                                                {quiz.deadline
+                                                    ? new Date(quiz.deadline).toLocaleString(undefined, {
+                                                        year: "numeric",
+                                                        month: "short",
+                                                        day: "numeric",
+                                                    })
+                                                    : "-"}
                                             </td>
 
                                             <td className="px-6 py-4">
@@ -146,23 +176,30 @@ export default function Quizs() {
                                             </td>
 
                                             <td className="px-6 py-4 font-semibold text-green-600">
-                                                {quiz.totalMarks.toFixed(2)}
+                                                {quiz.total_marks}
                                             </td>
 
                                             <td className="px-6 py-4">
                                                 <button
                                                     className="text-primary hover:underline"
-                                                    onClick={() => setOpen(true)}>Update</button>
-
+                                                    onClick={() => {
+                                                        setSelectedQuiz({ quiz, courseTitle: course.title });
+                                                        setOpenUpdate(true);
+                                                    }}
+                                                >
+                                                    Update
+                                                </button>
                                                 <UpdateQuizModal
-                                                    isOpen={open}
-                                                    onClose={() => setOpen(false)}
+                                                    isOpen={openUpdate}
+                                                    quiz={selectedQuiz?.quiz}
+                                                    course={selectedQuiz?.courseTitle}
+                                                    onClose={() => {setOpenUpdate(false); fetchAllQuizzes()}}
                                                 />
                                             </td>
 
                                             <td className="px-6 py-4">
                                                 <button
-                                                    onClick={handleDelete}
+                                                    onClick={() => handleDelete(quiz.id, course.course_id)}
                                                     className="text-red-600 hover:underline"
                                                 >
                                                     Delete
@@ -170,13 +207,19 @@ export default function Quizs() {
                                             </td>
 
                                             <td className="px-6 py-4">
-                                                 <button
+                                                <button
                                                     className="text-primary hover:underline"
-                                                    onClick={() => setOpen(true)}>Grade</button>
-
+                                                    onClick={() => {
+                                                        setSelectedQuiz(quiz);
+                                                        setOpenGrade(true);
+                                                    }}
+                                                >
+                                                    Grade
+                                                </button>
                                                 <GradeQuizModal
-                                                    isOpen={open}
-                                                    onClose={() => setOpen(false)}
+                                                    isOpen={openGrade}
+                                                    quizId={selectedQuiz?.id}
+                                                    onClose={() => {setOpenGrade(false); fetchAllQuizzes()}}
                                                 />
                                             </td>
                                         </tr>

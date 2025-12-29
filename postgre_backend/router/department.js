@@ -19,6 +19,23 @@ left join users u on u.id = d.head_of_dept_id
     }
 });
 
+router.get("/", async (req, res) => {
+  const { facultyId } = req.query;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, title 
+       FROM departments 
+       WHERE faculty_id = $1 
+       ORDER BY title`,
+      [facultyId]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET single department by ID
 router.get("/:id", async (req, res) => {
     const { id } = req.params;

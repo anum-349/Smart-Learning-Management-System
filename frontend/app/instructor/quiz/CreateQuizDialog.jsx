@@ -1,43 +1,73 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState } from "react";
 import { Calendar, CheckCircle, Trash2, Upload } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 
-const MOCK_COURSE = {
-  title: "Web Development",
-};
-
-export default function CreateQuizDialog({ isOpen, onClose }) {
+export default function CreateQuizDialog({ isOpen, onClose, courseId, courseTitle }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState(null);
   const [totalMarks, setTotalMarks] = useState(1);
   const [startDate, setStartDate] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert("✅ Quiz Created (Mock)");
-    onClose();
+    setError("");
+    if (!title) return setError("Quiz title is required");
+
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append("course_id", courseId);
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("total_marks", totalMarks);
+      formData.append("start_date", startDate);
+      formData.append("deadline", deadline);
+      if (file) formData.append("file", file);
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/quiz`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create quiz");
+
+      alert("✅ Quiz Created Successfully");
+      onClose();
+      setTitle("");
+      setDescription("");
+      setFile(null);
+      setTotalMarks(1);
+      setStartDate("");
+      setDeadline("");
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileChange = (e) => {
-    if (e.target.files) setFile(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create Quiz">
       <form onSubmit={handleSubmit} className="space-y-6 text-secondary">
         <p className="text-sm text-gray-800">
-          Course: <span className="font-medium">{MOCK_COURSE.title}</span>
+          Course: <span className="font-medium">{courseTitle}</span>
         </p>
 
         {/* Title */}
         <div>
-          <label className="text-sm font-medium text-gray-700">
-            Quiz Title
-          </label>
+          <label className="text-sm font-medium text-gray-700">Quiz Title</label>
           <input
             type="text"
             className="mt-1 w-full border border-primary rounded-lg px-3 py-2"
@@ -49,37 +79,26 @@ export default function CreateQuizDialog({ isOpen, onClose }) {
 
         {/* Description */}
         <div>
-          <label className="text-sm font-medium text-gray-700">
-            Description
-          </label>
+          <label className="text-sm font-medium text-gray-700">Description</label>
           <textarea
-            className="mt-1 w-full  border-primary border rounded-lg px-3 py-2 min-h-[100px]"
+            className="mt-1 w-full border border-primary rounded-lg px-3 py-2 min-h-[100px]"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
 
-        {/* File */}
+        {/* File Upload */}
         <div>
           <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
             <Upload size={16} />
             Upload File
           </label>
-
           <div className="flex items-center gap-3 mt-2">
             <input
               type="file"
               id="file"
-              className="hidden"
               onChange={handleFileChange}
             />
-            <label
-              htmlFor="file"
-              className="cursor-pointer border border-dashed px-4 py-2 rounded-lg text-sm hover:bg-gray-50"
-            >
-              {file ? "Change File" : "Choose File"}
-            </label>
-
             {file && (
               <Trash2
                 size={16}
@@ -133,7 +152,8 @@ export default function CreateQuizDialog({ isOpen, onClose }) {
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Error & Actions */}
+        {error && <p className="text-red-500">{error}</p>}
         <div className="flex justify-end gap-3 pt-4 border-t">
           <button
             type="button"
@@ -144,9 +164,10 @@ export default function CreateQuizDialog({ isOpen, onClose }) {
           </button>
           <button
             type="submit"
-            className="px-6 py-2 rounded-lg bg-primary text-white"
+            disabled={loading}
+            className="px-6 py-2 rounded-lg bg-primary text-white disabled:opacity-50"
           >
-            Save
+            {loading ? "Saving..." : "Save"}
           </button>
         </div>
       </form>

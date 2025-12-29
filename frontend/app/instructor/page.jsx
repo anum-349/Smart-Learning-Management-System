@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Zap, CheckCircle, Notebook, List, NotepadText, ExternalLink, MessageCircle, Table
+import {
+    Zap, CheckCircle, Notebook, List, NotepadText, ExternalLink, MessageCircle, Table
 } from "lucide-react";
 import NavBar from "../navbar/NavBar";
 import Header from "../header/Header";
@@ -18,17 +19,19 @@ const DashboardCard = ({ title, children }) => (
 );
 
 // Reusable CourseCard
-const CourseCard = ({ courseName, weekInfo, icon: Icon, link }) => (
+const CourseCard = ({ courseTitle, courseCode, courseBatch, courseSemester, icon: Icon, link }) => (
     <Link href={link}>
         <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg shadow-sm hover:bg-gray-200 transition-colors duration-200 mb-2 cursor-pointer">
             <div className="flex items-center">
                 <Icon size={20} className="text-orange-500 mr-3" />
                 <div>
-                    <p className="font-semibold text-primary">{courseName}</p>
+                    <p className="font-semibold text-primary">{courseCode} - {courseTitle}</p>
+                    <p className="text-sm text-gray-600">Batch: {courseBatch}</p>
+
                 </div>
             </div>
             <div className="flex items-center space-x-2">
-                <p className="text-sm text-gray-600">{weekInfo}</p>
+                <p className="text-sm text-gray-600">Semester: {courseSemester}</p>
             </div>
         </div>
     </Link>
@@ -43,20 +46,36 @@ const ActivityItem = ({ icon: Icon, text, count, link }) => (
     </Link>
 );
 
-// Static Data
-const courses = [
-    { name: "English Language Arts", frequency: "9 lessons / month" },
-    { name: "Math", frequency: "8 lessons / 3 weeks" },
-    { name: "Art History", frequency: "10 lessons / month" },
-    { name: "Architecture", frequency: "6 lessons / month" },
-];
-
 export default function InstructorHome() {
     const [notifications] = useState([
         { id: 1, text: "New Assignment Posted", isRead: false },
         { id: 2, text: "Quiz 2 Graded", isRead: true },
     ]);
 
+    const [courses, setCourses] = useState([]);
+    const [userId, setUserId] = useState("")
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+    useEffect(() => {
+        const localStorageId = localStorage.getItem("userId");
+        setUserId(localStorageId)
+    }, [])
+
+    useEffect(() => {
+        if (!userId) return;
+        const fetchCourses = async () => {
+            try {
+                const res = await fetch(`${API_URL}/instructor/courses/${userId}`);
+                const data = await res.json();
+                setCourses(data)
+                console.log(data)
+            } catch (err) {
+                console.log(err)
+            }
+        }
+        fetchCourses()
+    }, [userId])
     return (
         <div className="flex bg-light min-h-screen text-primary">
             {/* Sidebar */}
@@ -77,8 +96,10 @@ export default function InstructorHome() {
                                     <CourseCard
                                         key={i}
                                         icon={Zap}
-                                        courseName={course.name}
-                                        weekInfo={course.frequency}
+                                        courseTitle={course.title}
+                                        courseCode={course.code}
+                                        courseBatch={course.batch}
+                                        courseSemester={course.semester_number}
                                         link="/instructor/course"
                                     />
                                 ))}
@@ -93,7 +114,7 @@ export default function InstructorHome() {
                                         <NotepadText size={28} className="mb-1" />
                                         <span className="text-sm">Notes</span>
                                     </Link>
-                                    <Link href="/instructor/timetale" className="flex flex-col items-center text-primary hover:text-secondary">
+                                    <Link href="/instructor/timetable" className="flex flex-col items-center text-primary hover:text-secondary">
                                         <Table size={28} className="mb-1" />
                                         <span className="text-sm">Timetable</span>
                                     </Link>
