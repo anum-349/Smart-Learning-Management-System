@@ -2,30 +2,25 @@
 
 import Link from 'next/link';
 import {
-    Users, BookOpen, Clock,
+    Users, BookOpen,
     UserPlus,
-    Layers,
-    CalendarDays,
     Building2,
-    Library,
-    UserCheck,
     UserCog,
     GraduationCap,
     University,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import Header from '../header/Header';
 import NavBar from '../navbar/NavBar';
-const MOCK_ADMIN_DATA = {
-    totalStudents: 4125,
-    totalInstructors: 154,
-    totalCourses: 310,
-    totalFacultys: 45,
-    totalDepartments: 80,
-    totalRequestsPending: 90
+const EMPTY_METRICS = {
+    totalStudents: 0,
+    totalInstructors: 0,
+    totalCourses: 0,
+    totalFaculties: 0,
+    totalDepartments: 0,
+    totalRequestsPending: 0
 };
-
-const adminName = "Sana Abbasi";
 
 const MetricCard = ({ title, value, icon }) => (
     <div className={`p-5 rounded-xl shadow-lg border border-light bg-primary/80 transition-transform duration-300 hover:scale-[1.02]`}>
@@ -49,14 +44,33 @@ const QuickActionButton = ({ title, icon, href, bgColor, hoverBgColor }) => (
     </Link>
 );
 
-const initialNotifications = [
-    { id: 1, text: "Quiz 3 graded - Score: 95%", isRead: false, type: "grade" },
-    { id: 2, text: 'New lesson added: "Advanced React Hooks"', isRead: false, type: "course" },
-    { id: 3, text: "Welcome to your new dashboard!", isRead: true, type: "general" },
-    { id: 4, text: "Instructor John Doe posted a new announcement.", isRead: false, type: "announcement" },
-];
-
 const AdminDashboard = () => {
+    const [metrics, setMetrics] = useState(EMPTY_METRICS);
+    const [adminName, setAdminName] = useState("Admin");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        const userId = localStorage.getItem("userId");
+        const query = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/dashboard${query}`)
+            .then(async (res) => {
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || "Failed to load dashboard");
+                setMetrics({
+                    totalStudents: Number(data.totalStudents || 0),
+                    totalInstructors: Number(data.totalInstructors || 0),
+                    totalCourses: Number(data.totalCourses || 0),
+                    totalFaculties: Number(data.totalFaculties || 0),
+                    totalDepartments: Number(data.totalDepartments || 0),
+                    totalRequestsPending: Number(data.totalRequestsPending || 0),
+                });
+                setAdminName(data.name || "Admin");
+            })
+            .catch((err) => setError(err.message))
+            .finally(() => setLoading(false));
+    }, []);
+
     const loggedInUserName = adminName.toUpperCase();
 
     return (
@@ -64,45 +78,47 @@ const AdminDashboard = () => {
 
             <NavBar userType={"Admin"} />
             <main className="flex-1 ml-64">
-                <Header notification={initialNotifications} user={loggedInUserName} />
+                <Header notification={[]} user={loggedInUserName} />
 
                 <div className="p-6">
 
                     <h2 className="text-2xl font-bold mb-4 text-textLight"> Key System Metrics</h2>
+                    {error && <p role="alert" className="mb-4 rounded-lg bg-red-100 p-3 text-red-700">{error}</p>}
+                    {loading && <p className="mb-4 text-secondary">Loading dashboard data…</p>}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
 
                         <MetricCard
                             title="Total Students"
-                            value={MOCK_ADMIN_DATA.totalStudents}
+                            value={metrics.totalStudents}
                             icon={<Users size={24} className={`text-accent`} />}
                         />
                         <MetricCard
                             title="Total Faculties"
-                            value={MOCK_ADMIN_DATA.totalFacultys}
+                            value={metrics.totalFaculties}
                             icon={<University size={24} className={`text-accent`} />}
                         />
                         <MetricCard
                             title="Total Departments"
-                            value={MOCK_ADMIN_DATA.totalDepartments}
+                            value={metrics.totalDepartments}
                             icon={<Building2 size={24} className={`text-accent`} />}
                         />
                         <MetricCard
                             title="Total Instructors"
-                            value={MOCK_ADMIN_DATA.totalInstructors}
+                            value={metrics.totalInstructors}
                             icon={<UserCog size={24} className={`text-accent`} />}
                         />
                         <MetricCard
                             title="Total Courses"
-                            value={MOCK_ADMIN_DATA.totalCourses}
+                            value={metrics.totalCourses}
                             icon={<BookOpen size={24} className={`text-accent`} />}
                         />
                         <div className={`p-5 rounded-xl shadow-lg border border-accent bg-accentDark/20 transition-transform duration-300 hover:scale-[1.02]`}>
                             <div className="flex items-center justify-between">
-                                <span className={`text-sm font-medium text-secondary`}>Applications Pending</span>
+                                <span className={`text-sm font-medium text-secondary`}>Enrollment Requests Pending</span>
                                 <UserPlus size={24} className={`text-accent`} />
                             </div>
                             <p className={`text-4xl font-extrabold text-accent mt-2`}>
-                                {MOCK_ADMIN_DATA.totalRequestsPending}
+                                {metrics.totalRequestsPending}
                             </p>
                         </div>
                     </div>
@@ -194,7 +210,7 @@ const AdminDashboard = () => {
                                     hoverBgColor={`hover:bg-primary/20`}
                                 />
 
-                                {/* <QuickActionButton
+                                <QuickActionButton
                                     title="Manage Students"
                                     icon={<GraduationCap size={32} />}
                                     href="/admin/student"
@@ -208,7 +224,7 @@ const AdminDashboard = () => {
                                     href="/admin/instructor"
                                     bgColor={`bg-primary/50`}
                                     hoverBgColor={`hover:bg-primary/20`}
-                                /> */}
+                                />
 
                                 <div className="hidden lg:block"></div>
                             </div>

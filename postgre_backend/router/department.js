@@ -5,35 +5,21 @@ const router = express.Router();
 
 // GET all departments with faculty and HOD
 router.get("/", async (req, res) => {
+  const { facultyId } = req.query;
     try {
         const result = await pool.query(`
       select d.title, d.code, f.id as faculty_id, d.id as dept_id, f.title as faculty_title, u.id as user_id, u.full_name as hod
 from departments d
 left join faculties f on d.faculty_id = f.id
 left join users u on u.id = d.head_of_dept_id
-    `);
+WHERE ($1::int IS NULL OR d.faculty_id = $1)
+ORDER BY d.title
+    `, [facultyId || null]);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Server error", error: err.message });
     }
-});
-
-router.get("/", async (req, res) => {
-  const { facultyId } = req.query;
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, title 
-       FROM departments 
-       WHERE faculty_id = $1 
-       ORDER BY title`,
-      [facultyId]
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 // GET single department by ID

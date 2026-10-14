@@ -19,6 +19,11 @@ import timetable from "./router/timetable.js"
 import quiz from "./router/quiz.js"
 import students from "./router/student.js"
 import quizSubmission from "./router/quizSubmission.js"
+import assignments from "./router/assignments.js";
+import attendance from "./router/attendance.js";
+import discussions from "./router/discussions.js";
+import calendar from "./router/calendar.js";
+import admin from "./router/admin.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -32,7 +37,12 @@ app.use(express.json());
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+function home(req, res){
+    return res.send("its backend")
+}
+app.get('/', home)
 app.use("/api/auth", auth);
+app.use("/api/admin", admin);
 app.use("/api/faculties", faculties);
 app.use("/api/instructor", instructor);
 app.use("/api/students", students);
@@ -51,6 +61,10 @@ app.use("/api/resources", resource);
 app.use("/api/timetable", timetable);
 app.use("/api/quiz-submissions", quizSubmission);
 app.use("/api/quiz", quiz);
+app.use("/api/assignments", assignments);
+app.use("/api/attendance", attendance);
+app.use("/api/discussions", discussions);
+app.use("/api", calendar);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

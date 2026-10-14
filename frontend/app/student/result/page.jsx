@@ -1,207 +1,70 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { Award, Bell, Download } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Award } from "lucide-react";
 import NavBar from "../../navbar/NavBar";
 import Header from "../../header/Header";
+import { getStoredUserId, studentFetch, formatStudentDate } from "@/lib/student-api";
 
-// LetterAvatar, getGradePoint, calculateQualityPoints, MOCK_SEMESTER_DATA remain unchanged
-const MOCK_SEMESTER_DATA = {
-    "FALL-I.2024": {
-        registrationNo: "4503-FOC/BSSE/F22",
-        studentName: "Anum Kousar",
-        fatherName: "Muhammad Ayaz Khan",
-        faculty: "Computing and Information Technology",
-        department: "Software Engineering",
-        degreeProgram: "BS Software Engineering",
-        semester: "FALL-I.2024",
-        results: [
-            { code: 'CS202', title: 'Introduction to Database Systems', credits: 4, grade: 'B+', marks: 82 },
-            { code: 'IS375', title: 'Information Security', credits: 3, grade: 'A', marks: 91 },
-            { code: 'SE273', title: 'Software Design and Architecture', credits: 3, grade: 'A', marks: 95 },
-            { code: 'MG115', title: 'Intro to Social Media Marketing', credits: 3, grade: 'B', marks: 78 },
-            { code: 'CS202', title: 'Web Engineering', credits: 3, grade: 'A', marks: 92 },
-        ],
-        cumulativeGPA: 3.514,
-        status: "Degree In Progress",
-        percentage: "77.12",
-        issuedOn: "November 19, 2025",
-        pdfUrl: "/pdfs/Lecture01.pdf"
-    },
-    "SPRING-2024": {
-        registrationNo: "4503-FOC/BSSE/F22",
-        studentName: "Anum Kousar",
-        fatherName: "Muhammad Ayaz Khan",
-        faculty: "Computing and Information Technology",
-        department: "Software Engineering",
-        degreeProgram: "BS Software Engineering",
-        semester: "SPRING-2024",
-        results: [],
-        cumulativeGPA: 0,
-        status: "Not Available",
-        percentage: "0",
-        issuedOn: "N/A",
-        pdfUrl: "/pdfs/Lecture01.pdf"
+export default function StudentResult() {
+  const [profile, setProfile] = useState(null);
+  const [results, setResults] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const userId = getStoredUserId();
+    if (!userId) {
+      setError("Please sign in to view your results.");
+      setLoading(false);
+      return;
     }
-};
+    Promise.all([
+      studentFetch(`/api/students/profile/${encodeURIComponent(userId)}`),
+      studentFetch(`/api/students/${encodeURIComponent(userId)}/results`),
+    ]).then(([studentProfile, assessmentResults]) => {
+      setProfile(studentProfile);
+      setResults(assessmentResults);
+      const firstCourse = assessmentResults[0]?.course_id;
+      setSelectedCourseId(String(firstCourse || ""));
+    }).catch((err) => setError(err.message)).finally(() => setLoading(false));
+  }, []);
 
-const GRADE_POINT_MAP = {
-    'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0, 'B-': 2.7,
-    'C+': 2.3, 'C': 2.0, 'C-': 1.7, 'D+': 1.3, 'D': 1.0, 'F': 0.0,
-};
+  const courses = useMemo(() => Array.from(new Map(results.map((row) => [row.course_id, row])).values()), [results]);
+  const selectedRows = results.filter((row) => String(row.course_id) === selectedCourseId);
+  const obtained = selectedRows.reduce((sum, row) => sum + Number(row.obtained_marks || 0), 0);
+  const maximum = selectedRows.reduce((sum, row) => sum + Number(row.max_marks || 0), 0);
+  const percentage = maximum ? (obtained / maximum) * 100 : 0;
 
-const getGradePoint = (grade) => {
-    return GRADE_POINT_MAP[grade.toUpperCase()] || 0.0;
-};
-
-const calculateQualityPoints = (grade, credits) => {
-    const gradePoint = getGradePoint(grade);
-    const qualityPoints = gradePoint * credits;
-    return parseFloat(qualityPoints.toFixed(2));
-};
-
-const StudentResult = () => {
-    const availableSemesters = Object.keys(MOCK_SEMESTER_DATA);
-    const [selectedSemester, setSelectedSemester] = useState("FALL-I.2024");
-    const [resultData, setResultData] = useState(MOCK_SEMESTER_DATA["FALL-I.2024"]);
-
-    const loggedInUserName = resultData.studentName.toUpperCase();
-
-    const handleSemesterChange = (semester) => {
-        setSelectedSemester(semester);
-        setResultData(MOCK_SEMESTER_DATA[semester]);
-    };
-
-    const handleDownloadPDF = () => {
-        if (!resultData.pdfUrl) return console.log("PDF not available.");
-        const link = document.createElement("a");
-        link.href = resultData.pdfUrl;
-        link.download = `${resultData.semester}_Result.pdf`;
-        link.click();
-    };
-
-    const { semesterGPA } = useMemo(() => {
-        let totalQualityPoints = 0;
-        let totalCredits = 0;
-        resultData.results.forEach((course) => {
-            totalQualityPoints += calculateQualityPoints(course.grade, course.credits);
-            totalCredits += course.credits;
-        });
-        const sgpa = totalCredits ? totalQualityPoints / totalCredits : 0;
-        return { semesterGPA: parseFloat(sgpa.toFixed(3)) };
-    }, [resultData.results]);
-
-    return (
-        <div className="flex bg-light min-h-screen text-primary">
-            <NavBar userType="Student" />
-            <main className="flex-1 ml-64">
-                <Header user="Student" notification={[]} />
-
-                <div className="text-sm pl-5 pt-5 text-gray-600 mb-6">
-                    <span
-                        onClick={() => router.push("/student")}
-                        className="cursor-pointer hover:text-primary"
-                    >
-                        Dashboard
-                    </span>
-                    <span className="mx-2">/</span>
-                    <span className="font-medium text-gray-900">Results</span>
-                </div>
-
-                {/* Semester Selector */}
-                <div className="max-w-4xl mx-auto mb-6">
-                    <label className="block mb-2 font-semibold text-gray-700">Select Semester</label>
-                    <select
-                        value={selectedSemester}
-                        onChange={(e) => handleSemesterChange(e.target.value)}
-                        className="w-sm p-3 rounded-lg border border-gray-300 bg-primary text-light font-semibold"
-                    >
-                        {availableSemesters.map((sem, i) => (
-                            <option key={i} value={sem}>
-                                {sem}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Result Card */}
-                <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6">
-                    {/* Student Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="md:col-span-2 space-y-1 text-sm text-gray-700">
-                            <p><strong>Registration No:</strong> {resultData.registrationNo}</p>
-                            <p><strong>Student Name:</strong> {resultData.studentName}</p>
-                            <p><strong>Father's Name:</strong> {resultData.fatherName}</p>
-                            <p><strong>Faculty:</strong> {resultData.faculty}</p>
-                            <p><strong>Department:</strong> {resultData.department}</p>
-                            <p><strong>Degree Program:</strong> {resultData.degreeProgram}</p>
-                        </div>
-                        <div className="flex justify-center md:justify-end">
-                            <div className="w-36 h-36 border-2 border-gray-900 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
-                                Student Photo
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Courses Table */}
-                    <div className="overflow-x-auto mb-6">
-                        <table className="w-full text-sm border border-gray-300 rounded-lg">
-                            <thead className="bg-textDark rounded-t-2xl text-white sticky top-0">
-                                <tr>
-                                    <th className="p-2 text-left">Course Code</th>
-                                    <th className="p-2 text-left">Course Title</th>
-                                    <th className="p-2 text-center">Credits</th>
-                                    <th className="p-2 text-center">Marks</th>
-                                    <th className="p-2 text-center">Grade</th>
-                                    <th className="p-2 text-center">Quality Points</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {resultData.results.length ? (
-                                    resultData.results.map((course, i) => (
-                                        <tr key={i} className="border-t hover:bg-gray-100">
-                                            <td className="p-2">{course.code}</td>
-                                            <td className="p-2">{course.title}</td>
-                                            <td className="p-2 text-center">{course.credits}</td>
-                                            <td className="p-2 text-center">{course.marks}%</td>
-                                            <td className="p-2 text-center font-semibold text-accent">{course.grade}</td>
-                                            <td className="p-2 text-center">{calculateQualityPoints(course.grade, course.credits)}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={6} className="p-4 text-center text-gray-500">
-                                            No results available for this semester.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Summary */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 text-center">
-                        <div className="p-4 rounded-lg bg-primary text-gray-300 font-bold">SGPA<br />{semesterGPA.toFixed(3)}</div>
-                        <div className="p-4 rounded-lg bg-primary text-gray-300 font-bold">CGPA<br />{resultData.cumulativeGPA.toFixed(3)}</div>
-                        <div className="p-4 rounded-lg bg-primary text-gray-300 font-bold">Percentage<br />{resultData.percentage}%</div>
-                        <div className="p-4 rounded-lg bg-primary text-gray-300 font-bold">Status<br />{resultData.status}</div>
-                    </div>
-
-                    <p className="text-right text-xs text-gray-500">Results Issued On: <span className="text-gray-800">{resultData.issuedOn}</span></p>
-                </div>
-
-                {/* Download Button */}
-                <div className="max-w-4xl mx-auto mb-5 mt-6 flex justify-end">
-                    <button
-                        className="flex items-center px-6 py-3 bg-textDark text-white rounded-lg font-semibold shadow hover:bg-primary/90 transition"
-                        onClick={handleDownloadPDF}
-                    >
-                        <Download size={20} className="mr-2" /> Download PDF
-                    </button>
-                </div>
-            </main>
+  return (
+    <div className="flex min-h-screen bg-light text-primary">
+      <NavBar userType="Student" />
+      <main className="ml-64 flex-1">
+        <Header user="Student" notification={[]} />
+        <div className="mx-auto max-w-5xl space-y-6 p-6 pt-10">
+          <div className="text-sm text-gray-600"><Link href="/student" className="hover:text-primary">Dashboard</Link><span className="mx-2">/</span><span className="font-medium text-gray-900">Results</span></div>
+          <h1 className="flex items-center gap-3 text-2xl font-bold"><Award size={26} />Recorded Assessment Results</h1>
+          {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</p>}
+          {loading ? <p>Loading results…</p> : null}
+          {!loading && profile && <section className="grid gap-3 rounded-xl bg-white p-5 text-sm shadow sm:grid-cols-2"><p><strong>Registration no:</strong> {profile.registration_no || "—"}</p><p><strong>Student:</strong> {profile.fullname || profile.username || "—"}</p><p><strong>Father’s name:</strong> {profile.father_name || "—"}</p><p><strong>Program:</strong> {profile.program || "—"}</p><p><strong>Department:</strong> {profile.department || "—"}</p><p><strong>Current semester:</strong> {profile.semester_number ? `Semester ${profile.semester_number}` : "—"}</p></section>}
+          {!loading && !results.length && !error && <section className="rounded-xl bg-white p-8 text-center text-gray-600 shadow-sm">No graded assignment or quiz submissions are available yet. Official semester results are not stored in the current database.</section>}
+          {courses.length > 0 && <>
+            <div><label htmlFor="result-course" className="mb-2 block font-semibold">Course</label><select id="result-course" value={selectedCourseId} onChange={(event) => setSelectedCourseId(event.target.value)} className="w-full max-w-lg rounded-lg border bg-white p-3">{courses.map((course) => <option key={course.course_id} value={course.course_id}>{course.course_code ? `${course.course_code} — ` : ""}{course.course_title}</option>)}</select></div>
+            <section className="rounded-xl bg-white p-6 shadow-lg">
+              <div className="mb-5 border-b pb-4"><h2 className="text-2xl font-bold">{selectedRows[0]?.course_title}</h2><p className="text-gray-600">{selectedRows[0]?.course_code || ""} {selectedRows[0]?.credits != null ? `· ${selectedRows[0].credits} credit hours` : ""}</p></div>
+              <div className="mb-5 grid gap-4 sm:grid-cols-3"><Summary label="Graded assessments" value={selectedRows.length} /><Summary label="Marks earned" value={`${obtained.toFixed(2)} / ${maximum.toFixed(2)}`} /><Summary label="Recorded percentage" value={maximum ? `${percentage.toFixed(2)}%` : "—"} /></div>
+              <div className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-primary text-white"><tr><th className="p-3 text-left">Assessment</th><th className="p-3 text-left">Type</th><th className="p-3 text-center">Marks</th><th className="p-3 text-left">Feedback</th><th className="p-3 text-left">Recorded</th></tr></thead><tbody className="divide-y">{selectedRows.map((row, index) => <tr key={`${row.assessment_type}-${row.course_id}-${index}`}><td className="p-3 font-medium">{row.assessment_title}</td><td className="p-3">{row.assessment_type}</td><td className="p-3 text-center font-semibold">{row.obtained_marks} / {row.max_marks}</td><td className="p-3">{row.feedback || "—"}</td><td className="p-3">{formatStudentDate(row.graded_at)}</td></tr>)}</tbody></table></div>
+              <p className="mt-4 text-sm text-gray-500">These totals include only graded assignment and quiz submissions. Official grades and GPA are not available from the current database.</p>
+            </section>
+          </>}
         </div>
-    );
-};
+      </main>
+    </div>
+  );
+}
 
-export default StudentResult;
+function Summary({ label, value }) {
+  return <div className="rounded-lg bg-primary p-4 text-center text-white"><p className="text-sm text-gray-300">{label}</p><p className="mt-1 text-xl font-bold">{value}</p></div>;
+}

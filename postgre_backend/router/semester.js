@@ -7,6 +7,7 @@ const router = express.Router();
    GET all semesters
 ========================= */
 router.get("/", async (req, res) => {
+  const { batchId, programId } = req.query;
   try {
     const result = await pool.query(`
       SELECT 
@@ -15,32 +16,20 @@ router.get("/", async (req, res) => {
         s.start_date,
         s.end_date,
         b.id AS batch_id,
-        b.title AS batch_title
+        b.title AS batch_title,
+        b.program_id AS program_id,
+        s.semester_number::text AS title
       FROM semesters s
       JOIN batches b ON s.batch_id = b.id
+      WHERE ($1::int IS NULL OR s.batch_id = $1)
+        AND ($2::int IS NULL OR b.program_id = $2)
       ORDER BY s.id DESC
-    `);
+    `, [batchId || null, programId || null]);
 
     res.status(200).json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to fetch semesters" });
-  }
-});
-
-router.get("/", async (req, res) => {
-  const { batchId } = req.query;
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, title
-       FROM semesters
-       WHERE batch_id = $1`,
-      [batchId]
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 

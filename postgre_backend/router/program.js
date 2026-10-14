@@ -5,6 +5,7 @@ const router = express.Router();
 
 // Get all programs with department info
 router.get("/", async (req, res) => {
+  const { departmentId } = req.query;
   try {
     const result = await pool.query(`
       SELECT 
@@ -16,8 +17,9 @@ router.get("/", async (req, res) => {
         d.title AS department_title
       FROM programs p
       LEFT JOIN departments d ON p.department_id = d.id
+      WHERE ($1::int IS NULL OR p.department_id = $1)
       ORDER BY p.id;
-    `);
+    `, [departmentId || null]);
 
     const programs = result.rows.map(p => ({
       id: p.id,
@@ -31,22 +33,6 @@ router.get("/", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error", error: err.message });
-  }
-});
-
-router.get("/", async (req, res) => {
-  const { departmentId } = req.query;
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, title
-       FROM programs
-       WHERE department_id = $1`,
-      [departmentId]
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 });
 

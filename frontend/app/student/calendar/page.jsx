@@ -3,14 +3,12 @@ import Link from "next/link";
 import Header from "../../header/Header";
 import NavBar from "../../navbar/NavBar";
 
-import React, { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-    Bell, ChevronLeft, ChevronRight, PlusCircle, Clock, MapPin, Save, X
+    ChevronLeft, ChevronRight, PlusCircle, Clock, MapPin, X
 } from "lucide-react";
+import { getStoredUserId, studentFetch } from "@/lib/student-api";
 
-const initialNotifications = [
-    { id: 1, text: "New course added", isRead: false, type: "general" },
-];
 const formatDate = (date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -18,11 +16,11 @@ const formatDate = (date) => {
     return `${y}-${m}-${d}`;
 };
 
-const MOCK_EVENTS = [
-    { id: 1, date: formatDate(new Date(2025, 11, 17)), title: "Grading Deadline", time: "17:00", location: "Online" },
-    { id: 2, date: formatDate(new Date(2025, 11, 20)), title: "CS301 Lecture", time: "09:00", location: "Hall A1" },
-    { id: 3, date: formatDate(new Date(2025, 11, 20)), title: "Office Hours", time: "14:00", location: "Room 205" },
-];
+const normalizeEvent = (event) => ({
+    ...event,
+    date: typeof event.date === "string" ? event.date.slice(0, 10) : formatDate(new Date(event.date)),
+    time: String(event.time || "").slice(0, 5),
+});
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -52,64 +50,73 @@ const getCalendarDays = (date) => {
 };
 
 export default function Calendar() {
-    const [currentDate, setCurrentDate] = React.useState(new Date());
-    const [events, setEvents] = React.useState(MOCK_EVENTS);
-    const [selectedDate, setSelectedDate] = React.useState(formatDate(new Date()));
-    const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [newEvent, setNewEvent] = React.useState({ title: "", time: "", location: "" });
-
-    const userType = "Student"
+    const [currentDate, setCurrentDate] = useState(new Date());
+    const [events, setEvents] = useState([]);
+    const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [newEvent, setNewEvent] = useState({ title: "", time: "", location: "" });
+    const [userId, setUserId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
     
     const eventsOnSelectedDay = events
         .filter(e => e.date === selectedDate)
-        .sort((a, b) => a.time.localeCompare(b.time));
+        .sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
 
     const calendarDays = getCalendarDays(currentDate);
     const monthName = currentDate.toLocaleString("default", { month: "long", year: "numeric" });
+
     useEffect(() => {
-        const fetchEvents = async () => {
-            try {
-                const month = currentDate.getMonth() + 1;
-                const year = currentDate.getFullYear();
+        const id = getStoredUserId();
+        setUserId(id);
+        if (!id) {
+            setError("Please sign in to view your calendar.");
+            setLoading(false);
+        }
+    }, []);
 
-                const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType.toLowerCase()}s/${userId}/calendar?month=${month}&year=${year}`
-                );
-                const data = await response.json();
-
-                setEvents(data);
-            } catch (err) {
-                console.error('Failed to fetch events:', err);
-            }
-        };
-
-        fetchEvents();
-    }, [currentDate, userType]);
+    useEffect(() => {
+        if (!userId) return;
+        let active = true;
+        const month = currentDate.getMonth() + 1;
+        const year = currentDate.getFullYear();
+        studentFetch(`/api/students/${encodeURIComponent(userId)}/calendar?month=${month}&year=${year}`)
+            .then((data) => { if (active) { setEvents(data.map(normalizeEvent)); setError(""); } })
+            .catch((err) => { if (active) setError(err.message); })
+            .finally(() => { if (active) setLoading(false); });
+        return () => { active = false; };
+    }, [currentDate, userId]);
 
     const handleAddEvent = async () => {
+        if (!newEvent.title.trim() || !newEvent.time || !userId) {
+            setError("Enter an event title and time.");
+            return;
+        }
+        setSaving(true);
+        setError("");
         try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType.toLowerCase()}s/${userId}/calendar`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...newEvent, date: selectedDate }),
-                }
-            );
-            const addedEvent = await res.json();
-            setEvents([...events, addedEvent]); // update local state
+            const addedEvent = await studentFetch(`/api/students/${encodeURIComponent(userId)}/calendar`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...newEvent, title: newEvent.title.trim(), date: selectedDate }),
+            });
+            const normalized = normalizeEvent(addedEvent);
+            if (normalized.date.slice(0, 7) === formatDate(currentDate).slice(0, 7)) {
+                setEvents((current) => [...current, normalized].sort((a, b) =>
+                    a.date.localeCompare(b.date) || String(a.time || "").localeCompare(String(b.time || ""))
+                ));
+            }
             setIsModalOpen(false);
             setNewEvent({ title: "", time: "", location: "" });
-        } catch (err) {
-            console.error(err);
-            alert("Failed to add event");
-        }
+        } catch (err) { setError(err.message); }
+        finally { setSaving(false); }
     }
     return (
         <div className="flex bg-light min-h-screen text-primary">
             <NavBar userType={"Student"} />
             <main className="flex-1 ml-64">
-                <Header user="Student" notification={initialNotifications} />
+                <Header user="Student" notification={[]} />
                 <div className="container mx-auto p-6 pt-10">
                     <div className="text-sm text-gray-500 mb-6 flex items-center gap-2">
                         <Link href="/student" className="hover:text-accentDark">
@@ -119,6 +126,9 @@ export default function Calendar() {
                         <span>Calendar</span>
                     </div>
                 </div>
+
+                {error && <p role="alert" className="mx-6 mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</p>}
+                {loading && <p className="mx-6 mb-4 text-gray-600">Loading calendar events…</p>}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -172,7 +182,8 @@ export default function Calendar() {
                             <h3 className="font-semibold">Events</h3>
                             <button
                                 onClick={() => setIsModalOpen(true)}
-                                className="flex items-center text-sm text-primary"
+                                disabled={!userId}
+                                className="flex items-center text-sm text-primary disabled:opacity-50"
                             >
                                 <PlusCircle size={16} className="mr-1" /> Add
                             </button>
@@ -182,10 +193,16 @@ export default function Calendar() {
                             <div className="space-y-3">
                                 {eventsOnSelectedDay.map(e => (
                                     <div key={e.id} className="border rounded-lg p-3">
+                                        {e.event_type && e.event_type !== "event" && (
+                                            <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+                                                {e.event_type} due
+                                            </span>
+                                        )}
                                         <p className="font-medium">{e.title}</p>
-                                        <p className="text-sm text-gray-500 flex items-center">
+                                        {e.course_title && <p className="text-sm text-gray-500">{e.course_title}</p>}
+                                        {e.time && <p className="text-sm text-gray-500 flex items-center">
                                             <Clock size={14} className="mr-1" /> {e.time}
-                                        </p>
+                                        </p>}
                                         {e.location && (
                                             <p className="text-sm text-gray-400 flex items-center">
                                                 <MapPin size={14} className="mr-1" /> {e.location}
@@ -232,9 +249,10 @@ export default function Calendar() {
                         />
                         <button
                             onClick={handleAddEvent}
-                            className="bg-blue-600 text-white px-4 py-2 rounded"
+                            disabled={saving}
+                            className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50"
                         >
-                            Save
+                            {saving ? "Saving…" : "Save"}
                         </button>
                     </div>
                 </div>

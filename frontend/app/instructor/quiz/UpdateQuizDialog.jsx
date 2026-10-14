@@ -60,7 +60,7 @@ export default function UpdateQuizModal({
     if (file) formData.append("file", file);
 
     console.log(file)
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/quiz/${quizId}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${quizId}`, {
       method: "PUT",
       body: formData,
     });

@@ -5,6 +5,7 @@ import { Pencil, Save, X } from "lucide-react";
 import NavBar from "../../navbar/NavBar";
 import Header from "../../header/Header";
 import { useRouter } from "next/navigation";
+import { getStoredUserId, studentFetch, studentFileUrl } from "@/lib/student-api";
 
 export default function StudentProfilePage() {
   const [data, setData] = useState({});
@@ -12,30 +13,33 @@ export default function StudentProfilePage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [userId, setUserId] = useState(null);
-
-  const Api_URL = process.env.NEXT_PUBLIC_API_URL;
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   /* ================== FETCH STUDENT DETAILS ================== */
   const fetchStudentDetails = async () => {
     if (!userId) return;
     try {
-      const res = await fetch(`${Api_URL}/students/profile/${userId}`);
-      const data = await res.json();
+      const data = await studentFetch(`/api/students/profile/${encodeURIComponent(userId)}`);
       setData(data);
-      setImagePreview(
-        data.profile_picture
-          ? `${Api_URL}/${data.profile_picture}`
-          : null
-      );
+      setImagePreview(data.profile_picture ? studentFileUrl(data.profile_picture) : null);
+      setError("");
     } catch (err) {
-      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("userId");
+    const storedUserId = getStoredUserId();
     setUserId(storedUserId);
+    if (!storedUserId) {
+      setError("Please sign in to view your profile.");
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -56,24 +60,30 @@ export default function StudentProfilePage() {
   };
 
   const handleSave = async () => {
+    setSaving(true);
+    setError("");
     const formData = new FormData();
-
-    console.log(data)
-    Object.entries(data).forEach(([key, value]) => formData.append(key, value));
+    ["fullname", "username", "email", "phone", "gender", "address", "registration_no", "date_of_birth"].forEach((key) => {
+      formData.append(key, data[key] ?? "");
+    });
 
     if (imageFile) {
       formData.append("profile_picture", imageFile);
     }
 
     try {
-      await fetch(`${Api_URL}/students/profile/${userId}`, {
+      await studentFetch(`/api/students/profile/${encodeURIComponent(userId)}`, {
         method: "PUT",
         body: formData,
       });
       setEditMode(false);
-      fetchStudentDetails();
+      setImageFile(null);
+      await fetchStudentDetails();
+      window.dispatchEvent(new Event("lms:profile-updated"));
     } catch (err) {
-      console.error(err);
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -82,6 +92,9 @@ export default function StudentProfilePage() {
       <NavBar userType="Student" />
       <main className="flex-1 ml-64">
         <Header user="Student" notification={[]} />
+
+        {error && <p role="alert" className="mx-auto mt-4 max-w-4xl rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</p>}
+        {loading && <p className="mx-auto mt-4 max-w-4xl text-gray-600">Loading student profile…</p>}
 
         <div className="text-sm pl-5 pt-5 text-gray-600 mb-6">
           <span
@@ -137,9 +150,10 @@ export default function StudentProfilePage() {
               <div className="flex gap-2">
                 <button
                   onClick={handleSave}
+                  disabled={saving}
                   className="flex items-center gap-2 px-4 py-2 text-sm bg-accentDark hover:bg-accent text-white rounded-md"
                 >
-                  <Save size={16} /> Save
+                  <Save size={16} /> {saving ? "Saving…" : "Save"}
                 </button>
                 <button
                   onClick={() => setEditMode(false)}

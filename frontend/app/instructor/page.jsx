@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-    Zap, CheckCircle, Notebook, List, NotepadText, ExternalLink, MessageCircle, Table
+    Zap, CheckCircle, Notebook, List, NotepadText, MessageCircle, Table
 } from "lucide-react";
 import NavBar from "../navbar/NavBar";
 import Header from "../header/Header";
@@ -47,35 +47,66 @@ const ActivityItem = ({ icon: Icon, text, count, link }) => (
 );
 
 export default function InstructorHome() {
-    const [notifications] = useState([
-        { id: 1, text: "New Assignment Posted", isRead: false },
-        { id: 2, text: "Quiz 2 Graded", isRead: true },
-    ]);
-
+    const [notifications] = useState([]);
     const [courses, setCourses] = useState([]);
-    const [userId, setUserId] = useState("")
-
-    const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-    useEffect(() => {
-        const localStorageId = localStorage.getItem("userId");
-        setUserId(localStorageId)
-    }, [])
+    const [quizCount, setQuizCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
     useEffect(() => {
-        if (!userId) return;
-        const fetchCourses = async () => {
-            try {
-                const res = await fetch(`${API_URL}/instructor/courses/${userId}`);
-                const data = await res.json();
-                setCourses(data)
-                console.log(data)
-            } catch (err) {
-                console.log(err)
+        const controller = new AbortController();
+
+        const fetchDashboard = async () => {
+            const userId = localStorage.getItem("userId");
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+            if (!userId) {
+                setError("Please sign in to view your instructor dashboard.");
+                setLoading(false);
+                return;
             }
-        }
-        fetchCourses()
-    }, [userId])
+            if (!apiUrl) {
+                setError("The backend API URL is not configured.");
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const res = await fetch(`${apiUrl}/api/instructor/courses/${userId}`, {
+                    signal: controller.signal,
+                });
+                if (!res.ok) throw new Error("Could not load your courses.");
+
+                const data = await res.json();
+                const assignedCourses = Array.isArray(data) ? data : [];
+                setCourses(assignedCourses);
+
+                const quizResults = await Promise.all(assignedCourses.map(async (course) => {
+                    try {
+                        const quizRes = await fetch(`${apiUrl}/api/quiz/course/${course.id}`, {
+                            signal: controller.signal,
+                        });
+                        if (!quizRes.ok) return [];
+                        const quizzes = await quizRes.json();
+                        return Array.isArray(quizzes) ? quizzes : [];
+                    } catch (err) {
+                        if (err.name === "AbortError") throw err;
+                        return [];
+                    }
+                }));
+                setQuizCount(quizResults.reduce((count, quizzes) => count + quizzes.length, 0));
+            } catch (err) {
+                if (err.name !== "AbortError") {
+                    setError(err.message || "Unable to load the instructor dashboard.");
+                }
+            } finally {
+                if (!controller.signal.aborted) setLoading(false);
+            }
+        };
+
+        fetchDashboard();
+        return () => controller.abort();
+    }, []);
     return (
         <div className="flex bg-light min-h-screen text-primary">
             {/* Sidebar */}
@@ -92,9 +123,14 @@ export default function InstructorHome() {
                         {/* Left Column: Courses */}
                         <div className="lg:col-span-2 space-y-6">
                             <DashboardCard title="My Courses">
-                                {courses.map((course, i) => (
+                                {loading && <p className="text-sm text-gray-600">Loading your courses…</p>}
+                                {!loading && error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+                                {!loading && !error && courses.length === 0 && (
+                                    <p className="text-sm text-gray-600">No courses have been assigned to you yet.</p>
+                                )}
+                                {courses.map((course) => (
                                     <CourseCard
-                                        key={i}
+                                        key={course.id}
                                         icon={Zap}
                                         courseTitle={course.title}
                                         courseCode={course.code}
@@ -123,8 +159,8 @@ export default function InstructorHome() {
 
                             <DashboardCard title="My Activities">
                                 <div className="grid grid-cols-2 gap-4 text-center">
-                                    <ActivityItem icon={CheckCircle} text="Assignments" count={4} link="/instructor/assignment" />
-                                    <ActivityItem icon={Notebook} text="Quizzes" link="/instructor/quiz" />
+                                    <ActivityItem icon={CheckCircle} text="Assignments" link="/instructor/assignment" />
+                                    <ActivityItem icon={Notebook} text="Quizzes" count={quizCount} link="/instructor/quiz" />
                                     <ActivityItem icon={List} text="Attendance" link="/instructor/course/attendance" />
                                     <ActivityItem icon={MessageCircle} text="Discussion" link="/instructor/discussion" />
                                 </div>

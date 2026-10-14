@@ -9,10 +9,6 @@ import UpdateQuizModal from "./UpdateQuizDialog";
 import GradeQuizModal from "./GradeQuizDialog";
 import { useEffect } from "react";
 
-const initialNotifications = [
-    { id: 1, text: "New course added", isRead: false, type: "general" },
-];
-
 
 export default function Quizs() {
     const router = useRouter();
@@ -37,7 +33,7 @@ export default function Quizs() {
         if (!userId) return;
         const fetchCourses = async () => {
             try {
-                const res = await fetch(`${API_URL}/course-assignments/instructor/${userId}`)
+                const res = await fetch(`${API_URL}/api/course-assignments/instructor/${userId}`)
                 const data = await res.json()
                 console.log(data)
                 setCourses(data)
@@ -52,7 +48,7 @@ export default function Quizs() {
         const quizzesMap = {};
         for (const course of courses) {
             try {
-                const res = await fetch(`${API_URL}/quiz/course/${course.course_id}`);
+                const res = await fetch(`${API_URL}/api/quiz/course/${course.course_id}`);
                 const data = await res.json();
                 console.log(data)
                 quizzesMap[course.course_id] = data;
@@ -73,7 +69,7 @@ export default function Quizs() {
         if (!confirm("Are you sure you want to delete this quiz?")) return;
 
         try {
-            const res = await fetch(`${API_URL}/quiz/${quizId}`, {
+            const res = await fetch(`${API_URL}/api/quiz/${quizId}`, {
                 method: "DELETE",
             });
 
@@ -95,7 +91,7 @@ export default function Quizs() {
         <div className="flex bg-light min-h-screen text-primary">
             <NavBar userType={"Instructor"} />
             <main className="flex-1 ml-64 ">
-                <Header user="Instructor" notification={initialNotifications} />
+                <Header user="Instructor" notification={[]} />
                 <div className="text-sm pl-5 pt-5 text-gray-600 mb-6">
                     <span
                         onClick={() => router.push("/instructor")}
@@ -153,7 +149,7 @@ export default function Quizs() {
                                             </td>
 
                                             <td className="px-6 py-4 text-blue-600 w-64 text-sm">
-                                                <a href={`http://localhost:5000/${quiz.file_path}`}
+                                                <a href={`${API_URL}/${quiz.file_path?.replaceAll("\\", "/")}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="hover:underline">
@@ -218,7 +214,8 @@ export default function Quizs() {
                                                 </button>
                                                 <GradeQuizModal
                                                     isOpen={openGrade}
-                                                    quizId={selectedQuiz?.id}
+                                                    quiz={selectedQuiz}
+                                                    instructorId={userId}
                                                     onClose={() => {setOpenGrade(false); fetchAllQuizzes()}}
                                                 />
                                             </td>

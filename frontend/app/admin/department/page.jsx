@@ -17,12 +17,7 @@ import Select from "../../../components/Select";
 import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
-const initialNotifications = [
-    { id: 1, text: "Quiz 3 graded - Score: 95%", isRead: false, type: "grade" },
-    { id: 2, text: 'New lesson added: "Advanced React Hooks"', isRead: false, type: "course" },
-    { id: 3, text: "Welcome to your new dashboard!", isRead: true, type: "general" },
-    { id: 4, text: "Instructor John Doe posted a new announcement.", isRead: false, type: "announcement" },
-];
+const initialNotifications = [];
 
 export default function AdminDepartmentManagement() {
     const [departments, setDepartments] = useState([]);
@@ -49,7 +44,7 @@ export default function AdminDepartmentManagement() {
     });
 
     const fetchDepartments = async () => {
-        const resDept = await fetch(`${API_URL}/departments`);
+        const resDept = await fetch(`${API_URL}/api/departments`);
         const deptData = await resDept.json();
         setDepartments(deptData);
         console.log(deptData)
@@ -62,12 +57,12 @@ export default function AdminDepartmentManagement() {
                 fetchDepartments()
 
                 // Get all instructors (HOD options)
-                const resInstr = await fetch(`${API_URL}/instructor/hods`);
+                const resInstr = await fetch(`${API_URL}/api/instructor/hods`);
                 const instrData = await resInstr.json();
                 setInstructors(instrData);
 
                 // Get all faculties (for dropdown)
-                const resFac = await fetch(`${API_URL}/faculties`);
+                const resFac = await fetch(`${API_URL}/api/faculties`);
                 const facData = await resFac.json();
                 setFaculties(facData ? facData : []);
             } catch (err) {
@@ -89,7 +84,7 @@ export default function AdminDepartmentManagement() {
         }
 
         try {
-            const res = await fetch(`${API_URL}/departments`, {
+            const res = await fetch(`${API_URL}/api/departments`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -127,7 +122,7 @@ export default function AdminDepartmentManagement() {
 
         console.log(updateData)
         try {
-            const res = await fetch(`${API_URL}/departments/${updateData.id}`, {
+            const res = await fetch(`${API_URL}/api/departments/${updateData.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -154,7 +149,7 @@ export default function AdminDepartmentManagement() {
         if (!confirm("Are you sure?")) return;
 
         try {
-            const res = await fetch(`${API_URL}/departments/${id}`, { method: "DELETE" });
+            const res = await fetch(`${API_URL}/api/departments/${id}`, { method: "DELETE" });
             if (!res.ok) throw new Error("Failed to delete department");
 
             fetchDepartments()

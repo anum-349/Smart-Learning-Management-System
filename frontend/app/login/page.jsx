@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa6";
+import Image from "next/image";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -24,7 +25,7 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const response = await fetch(`${API_URL}/auth/login`, {
+            const response = await fetch(`${API_URL}/api/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -70,13 +71,18 @@ export default function LoginPage() {
             {/* Card */}
             <div className=" relative bg-light rounded-2xl backdrop-blur-md shadow-[0_0_20px_#6f8197] border border-light overflow-hidden w-full max-w-md">
                 {/* Header */}
-                <div className=" bg-primary p-6 text-center">
-                    <h1 className="text-3xl font-bold text-light tracking-wide">
+                <div className=" bg-[#081426] p-6 text-center">
+                    <Image
+                        src="/logo.png"
+                        alt="Aetheron LMS logo"
+                        width={112}
+                        height={112}
+                        priority
+                        className="mx-auto mb-4 h-24 w-24 rounded-xl object-cover"
+                    />
+                    <h1 className="text-xl font-bold text-light tracking-wide">
                         Learning Management System
                     </h1>
-                    <p className="text-gray-200 mt-2 text-sm">
-                        Sign in to continue to your dashboard
-                    </p>
                 </div>
 
                 {/* Login Form */}
@@ -129,7 +135,7 @@ export default function LoginPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3 rounded-lg bg-linear-to-r bg-primary text-light font-semibold hover:scale-105 transition transform"
+                            className="w-full py-3 rounded-lg bg-linear-to-tl from-primary to-[#081426] text-light font-semibold hover:scale-105 transition transform"
                         >
                             {loading ? "Logging in..." : "Log In"}
                         </button>

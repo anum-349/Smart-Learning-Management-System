@@ -7,32 +7,30 @@ const router = express.Router();
  * GET all courses
  */
 router.get("/", async (req, res) => {
+    const { programId, semesterId } = req.query;
     try {
         const result = await pool.query(
-            "SELECT id, title, code, credit_hours FROM courses"
+            `SELECT c.id, c.title, c.code, c.credit_hours
+             FROM courses c
+             WHERE ($1::int IS NULL OR EXISTS (
+               SELECT 1 FROM semester_assignments sa
+               CROSS JOIN LATERAL unnest(sa.assigned_course_ids) AS offered(course_id)
+               WHERE sa.program_id = $1 AND offered.course_id = c.id
+             ))
+             AND ($2::int IS NULL OR EXISTS (
+               SELECT 1 FROM semester_assignments sa
+               CROSS JOIN LATERAL unnest(sa.assigned_course_ids) AS offered(course_id)
+               WHERE sa.semester = $2 AND offered.course_id = c.id
+                 AND ($1::int IS NULL OR sa.program_id = $1)
+             ))
+             ORDER BY c.title`,
+            [programId || null, semesterId || null]
         );
         res.json(result.rows);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Failed to fetch courses" });
     }
-});
-
-router.get("/", async (req, res) => {
-  const { programId, semesterId } = req.query;
-
-  try {
-    const { rows } = await pool.query(
-      `SELECT id, title
-       FROM courses
-       WHERE program_id = $1
-       AND semester_id = $2`,
-      [programId, semesterId]
-    );
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 /**

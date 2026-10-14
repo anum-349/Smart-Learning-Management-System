@@ -11,11 +11,9 @@ import Select from "../../../components/Select";
 import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
-const initialNotifications = [
-  { id: 1, text: "Semester module loaded", isRead: false, type: "general" },
-];
+const initialNotifications = [];
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function SemesterManagement() {
   const [semesters, setSemesters] = useState([]);
@@ -39,7 +37,7 @@ export default function SemesterManagement() {
   });
 
   useEffect(() => {
-    fetch(`${API_URL}/batches`)
+    fetch(`${API_URL}/api/batches`)
       .then((res) => res.json())
       .then((data) =>
         setBatches(
@@ -54,7 +52,7 @@ export default function SemesterManagement() {
 
   /* ---------------- FETCH SEMESTERS ---------------- */
   const fetchSemesters = () => {
-    fetch(`${API_URL}/semesters`)
+    fetch(`${API_URL}/api/semesters`)
       .then((res) => res.json())
       .then((data) =>
         setSemesters(
@@ -93,12 +91,12 @@ export default function SemesterManagement() {
   const handleAddSemester = async (e) => {
     e.preventDefault();
 
-    if (!newSemester.batchId || !newSemester.endDate, !newSemester.semesterNumber, !newSemester.startDate ) {
-        alert("fill all fields")
-        return
+    if (!newSemester.batchId || !newSemester.endDate, !newSemester.semesterNumber, !newSemester.startDate) {
+      alert("fill all fields")
+      return
     }
 
-    const res = await fetch(`${API_URL}/semesters`, {
+    const res = await fetch(`${API_URL}/api/semesters`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -122,7 +120,7 @@ export default function SemesterManagement() {
   };
 
   const toDateInputValue = (isoString) =>
-  new Date(isoString).toISOString().split("T")[0];
+    new Date(isoString).toISOString().split("T")[0];
 
   /* ---------------- EDIT ---------------- */
   const handleEdit = (s) => {
@@ -140,7 +138,7 @@ export default function SemesterManagement() {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
 
-    const res = await fetch(`${API_URL}/semesters/${updateData.id}`, {
+    const res = await fetch(`${API_URL}/api/semesters/${updateData.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -161,21 +159,21 @@ export default function SemesterManagement() {
   const handleDelete = async (id) => {
     if (!confirm("Are you sure?")) return;
 
-    await fetch(`${API_URL}/semesters/${id}`, { method: "DELETE" });
+    await fetch(`${API_URL}/api/semesters/${id}`, { method: "DELETE" });
     fetchSemesters();
   };
 
   const formatDisplayDate = (date) => {
-  if (!date) return "";
+    if (!date) return "";
 
-  const d = new Date(date);
+    const d = new Date(date);
 
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-};
+    return d.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   return (
     <div className="flex bg-light min-h-screen text-primary">
@@ -239,11 +237,10 @@ export default function SemesterManagement() {
 
               <button
                 type="submit"
-                className={`col-span-4 py-2 rounded-xl text-white font-semibold ${
-                  isEdit
+                className={`col-span-4 py-2 rounded-xl text-white font-semibold ${isEdit
                     ? "bg-primary hover:bg-secondary/40"
                     : "bg-accentDark hover:bg-accent"
-                }`}
+                  }`}
               >
                 {isEdit ? "Save Changes" : "Add Semester"}
               </button>

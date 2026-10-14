@@ -13,18 +13,18 @@ export default function InstructorProfilePage() {
     const [imageFile, setImageFile] = useState(null);
     const [userId, setUserId] = useState(null);
 
-    const Api_URL = process.env.NEXT_PUBLIC_API_URL;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
     const router = useRouter()
 
     const fetchInstructorDetails = async () => {
         try {
-            const res = await fetch(`${Api_URL}/registration/instructor/profile/${userId}`);
+            const res = await fetch(`${API_URL}/api/registration/instructor/profile/${userId}`);
             const data = await res.json();
             setData(data)
             setImagePreview(
                 data.profile_picture
-                    ? `http://localhost:5000/${data.profile_picture}`
+                    ? `${API_URL}/${data.profile_picture.replaceAll("\\", "/")}`
                     : null
             );
             console.log(data)
@@ -68,12 +68,14 @@ export default function InstructorProfilePage() {
         }
 
         try {
-            await fetch(`${Api_URL}/registration/instructor/profile/${userId}`, {
+            const response = await fetch(`${API_URL}/api/registration/instructor/profile/${userId}`, {
                 method: "PUT",
                 body: formData,
             });
+            if (!response.ok) throw new Error("Unable to save instructor profile.");
             setEditMode(false);
-            fetchInstructorDetails();
+            await fetchInstructorDetails();
+            window.dispatchEvent(new Event("lms:profile-updated"));
         } catch (err) {
             console.log(err)
         }

@@ -1,313 +1,135 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import {
-    MessageSquare,
-    Send,
-    Plus,
-    Filter,
-    X,
-    AlertCircle
-} from "lucide-react";
-
+import { useEffect, useMemo, useState } from "react";
+import { MessageSquare, Send, Plus, Filter, X } from "lucide-react";
 import NavBar from "../../navbar/NavBar";
 import Header from "../../header/Header";
-import { useRouter } from "next/navigation";
+import { getStoredUserId, studentFetch, formatStudentDate } from "@/lib/student-api";
 
-/* ---------- DUMMY DATA ---------- */
-const MOCK_DISCUSSIONS = [
-    {
-        id: 1,
-        threadTitle: "Issue with HTML Assignment",
-        course: "Programming Fundamental",
-        author: "Sana Malik",
-        authorRole: "Student",
-        postedOn: "2024-10-20",
-        content: "I am unable to upload my zip file. It says size limit exceeded.",
-        replies: [
-            {
-                id: 101,
-                author: "ANUM KOUSAR",
-                authorRole: "Instructor",
-                postedOn: "2024-10-21",
-                content: "Please try compressing it further or use a Google Drive link."
-            }
-        ]
-    }
-];
+const roleName = (role) => String(role || "Student").toLowerCase() === "instructor" ? "Instructor" : "Student";
 
-/* ---------- SMALL UI COMPONENTS ---------- */
-const LetterAvatar = ({ name }) => (
-    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs border">
-        {name.charAt(0)}
-    </div>
-);
-
-const PostAuthorBadge = ({ role }) => (
-    <span
-        className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-md
-        ${role === "Instructor"
-            ? "bg-primary text-white"
-            : "bg-gray-100 text-gray-600 border"}`}
-    >
-        {role}
-    </span>
-);
-
-/* ---------- MAIN PAGE ---------- */
-export default function StudentCourseDiscussionPage() {
-    const COURSES = ["Programming Fundamental", "Data Structures", "Web Development"];
-    const [selectedCourse, setSelectedCourse] = useState(COURSES[0]);
-    const [threads, setThreads] = useState(MOCK_DISCUSSIONS);
-    const [activeThreadId, setActiveThreadId] = useState(null);
-    const [replyContent, setReplyContent] = useState("");
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
-    const router = useRouter();
-
-    const filteredThreads = useMemo(
-        () => threads.filter(t => t.course === selectedCourse),
-        [threads, selectedCourse]
-    );
-
-    const activeThread = useMemo(
-        () => threads.find(t => t.id === activeThreadId),
-        [threads, activeThreadId]
-    );
-
-    /* ---------- ACTIONS ---------- */
-    const handlePostReply = () => {
-        if (!replyContent.trim() || !activeThread) return;
-
-        const newReply = {
-            id: Date.now(),
-            author: "Anum Kousar",
-            authorRole: "Student",
-            postedOn: new Date().toLocaleDateString(),
-            content: replyContent
-        };
-
-        setThreads(prev =>
-            prev.map(t =>
-                t.id === activeThread.id
-                    ? { ...t, replies: [...t.replies, newReply] }
-                    : t
-            )
-        );
-        setReplyContent("");
-    };
-
-    const handlePostNewThread = ({ subject, description, course }) => {
-        const newThread = {
-            id: Date.now(),
-            threadTitle: subject,
-            content: description,
-            course,
-            author: "Anum Kousar",
-            authorRole: "Student",
-            postedOn: new Date().toLocaleDateString(),
-            replies: []
-        };
-
-        setThreads(prev => [newThread, ...prev]);
-        setActiveThreadId(newThread.id);
-    };
-
-    return (
-        <div className="flex bg-[#f8f9fa] min-h-screen text-primary">
-            <NavBar userType="Student" />
-            <main className="flex-1 ml-64 flex flex-col">
-                <Header user="Student" notification={[]} />
-
-                {/* Breadcrumb */}
-                <div className="text-sm text-gray-600 mb-6 pt-5 pl-5">
-                    <span
-                        onClick={() => router.push("/student")}
-                        className="cursor-pointer hover:text-primary"
-                    >
-                        Dashboard
-                    </span>
-                    <span className="mx-2">/</span>
-                    <span className="font-medium text-gray-900">Discussion</span>
-                </div>
-
-                <div className="p-6 flex flex-col flex-1 overflow-hidden">
-                    {/* Top Bar */}
-                    <div className="flex justify-between items-center mb-6">
-                        <div className="flex items-center gap-4">
-                            <h1 className="text-2xl font-bold">Course Discussion</h1>
-                            <div className="flex items-center gap-2 bg-white border rounded-lg px-3 py-1.5 shadow-sm">
-                                <Filter size={16} className="text-gray-400" />
-                                <select
-                                    className="bg-transparent text-sm font-medium outline-none"
-                                    value={selectedCourse}
-                                    onChange={(e) => setSelectedCourse(e.target.value)}
-                                >
-                                    {COURSES.map(c => (
-                                        <option key={c}>{c}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg shadow-md"
-                        >
-                            <Plus size={18} /> New Thread
-                        </button>
-
-                        {isModalOpen && (
-                            <NewThreadModal
-                                courseName={selectedCourse}
-                                onClose={() => setIsModalOpen(false)}
-                                onPost={handlePostNewThread}
-                            />
-                        )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex flex-1 gap-6 overflow-hidden">
-                        {/* Thread List */}
-                        <div className="w-80 bg-white rounded-xl border shadow-sm overflow-y-auto">
-                            {filteredThreads.map(thread => (
-                                <div
-                                    key={thread.id}
-                                    onClick={() => setActiveThreadId(thread.id)}
-                                    className={`p-4 cursor-pointer border-b
-                                    ${activeThreadId === thread.id
-                                        ? "bg-indigo-50 border-l-4 border-indigo-600"
-                                        : "hover:bg-gray-50 border-l-4 border-transparent"}`}
-                                >
-                                    <h5 className="font-semibold text-sm">{thread.threadTitle}</h5>
-                                    <p className="text-xs text-gray-500">{thread.author}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Thread View */}
-                        <div className="flex-1 bg-white rounded-xl border shadow-sm flex flex-col">
-                            {activeThread ? (
-                                <>
-                                    <div className="p-4 border-b bg-gray-50">
-                                        <h3 className="font-bold">{activeThread.threadTitle}</h3>
-                                        <p className="text-xs text-gray-500">{activeThread.course}</p>
-                                    </div>
-
-                                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                                        {/* Original Post */}
-                                        <div className="flex gap-4">
-                                            <LetterAvatar name={activeThread.author} />
-                                            <div>
-                                                <div className="flex gap-2 items-center mb-1">
-                                                    <strong className="text-sm">{activeThread.author}</strong>
-                                                    <PostAuthorBadge role={activeThread.authorRole} />
-                                                </div>
-                                                <div className="bg-gray-50 p-4 rounded-xl border">
-                                                    {activeThread.content}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Replies */}
-                                        {activeThread.replies.map(r => (
-                                            <div key={r.id} className="flex gap-4">
-                                                <LetterAvatar name={r.author} />
-                                                <div>
-                                                    <div className="flex gap-2 items-center mb-1">
-                                                        <strong className="text-sm">{r.author}</strong>
-                                                        <PostAuthorBadge role={r.authorRole} />
-                                                    </div>
-                                                    <div className={`p-4 rounded-xl border
-                                                        ${r.authorRole === "Instructor"
-                                                            ? "bg-accent text-white"
-                                                            : "bg-white"}`}>
-                                                        {r.content}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Reply Box */}
-                                    <div className="p-4 border-t bg-gray-50">
-                                        <div className="relative">
-                                            <textarea
-                                                rows={1}
-                                                placeholder="Write a reply..."
-                                                value={replyContent}
-                                                onChange={(e) => setReplyContent(e.target.value)}
-                                                className="w-full p-3 pr-12 rounded-xl border resize-none"
-                                            />
-                                            <button
-                                                onClick={handlePostReply}
-                                                className="absolute right-2 top-2 bg-primary text-white p-2 rounded-lg"
-                                            >
-                                                <Send size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex-1 flex items-center justify-center text-gray-400">
-                                    <MessageSquare size={32} />
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </main>
-        </div>
-    );
+function Avatar({ name }) {
+  return <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-indigo-100 text-xs font-bold text-indigo-700">{name?.charAt(0)?.toUpperCase() || "?"}</div>;
 }
 
-/* ---------- MODAL ---------- */
-function NewThreadModal({ courseName, onClose, onPost }) {
-    const [subject, setSubject] = useState("");
-    const [description, setDescription] = useState("");
+function RoleBadge({ role }) {
+  const instructor = roleName(role) === "Instructor";
+  return <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${instructor ? "bg-primary text-white" : "border bg-gray-100 text-gray-600"}`}>{roleName(role)}</span>;
+}
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        onPost({ subject, description, course: courseName });
-        onClose();
-    };
+export default function StudentDiscussionPage() {
+  const [userId, setUserId] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [threads, setThreads] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [activeThreadId, setActiveThreadId] = useState(null);
+  const [reply, setReply] = useState("");
+  const [showNewThread, setShowNewThread] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newContent, setNewContent] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl w-full max-w-lg shadow-xl">
-                <div className="bg-primary text-white p-4 flex justify-between">
-                    <h3 className="font-bold">New Discussion</h3>
-                    <button onClick={onClose}><X /></button>
-                </div>
+  const loadThreads = async (id) => setThreads(await studentFetch(`/api/discussions/student/${encodeURIComponent(id)}`));
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <input
-                        value={subject}
-                        onChange={e => setSubject(e.target.value)}
-                        placeholder="Thread title"
-                        className="w-full border p-2 rounded-lg"
-                    />
-                    <textarea
-                        value={description}
-                        onChange={e => setDescription(e.target.value)}
-                        rows={4}
-                        placeholder="Describe your issue..."
-                        className="w-full border p-2 rounded-lg"
-                    />
+  useEffect(() => {
+    const id = getStoredUserId();
+    setUserId(id);
+    if (!id) {
+      setError("Please sign in to view course discussions.");
+      setLoading(false);
+      return;
+    }
+    Promise.all([
+      studentFetch(`/api/students/${encodeURIComponent(id)}/courses`),
+      studentFetch(`/api/discussions/student/${encodeURIComponent(id)}`),
+    ]).then(([courseRows, threadRows]) => {
+      setCourses(courseRows);
+      setThreads(threadRows);
+      setSelectedCourseId(String(courseRows[0]?.course_id || ""));
+      setActiveThreadId(threadRows[0]?.id || null);
+    }).catch((err) => setError(err.message)).finally(() => setLoading(false));
+  }, []);
 
-                    <div className="bg-blue-50 border p-3 rounded-lg flex gap-2 text-xs">
-                        <AlertCircle size={16} />
-                        Visible to students enrolled in <b>{courseName}</b>
-                    </div>
+  const filteredThreads = useMemo(() => threads.filter((thread) => !selectedCourseId || String(thread.course_id) === selectedCourseId), [threads, selectedCourseId]);
+  const activeThread = filteredThreads.find((thread) => thread.id === activeThreadId) || filteredThreads[0] || null;
 
-                    <div className="flex justify-end gap-3">
-                        <button type="button" onClick={onClose}>Cancel</button>
-                        <button type="submit" className="bg-primary text-white px-4 py-2 rounded-lg">
-                            Post
-                        </button>
-                    </div>
-                </form>
+  const refreshThreads = async (focusId) => {
+    const rows = await studentFetch(`/api/discussions/student/${encodeURIComponent(userId)}`);
+    setThreads(rows);
+    if (focusId) setActiveThreadId(focusId);
+  };
+
+  const handleCreateThread = async (event) => {
+    event.preventDefault();
+    if (!userId || !selectedCourseId || !newTitle.trim() || !newContent.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      const created = await studentFetch("/api/discussions/student/threads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course_id: selectedCourseId, author_id: userId, title: newTitle.trim(), content: newContent.trim() }),
+      });
+      await refreshThreads(created.id);
+      setNewTitle("");
+      setNewContent("");
+      setShowNewThread(false);
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleReply = async (event) => {
+    event.preventDefault();
+    if (!reply.trim() || !activeThread || !userId) return;
+    setSaving(true);
+    setError("");
+    try {
+      await studentFetch(`/api/discussions/threads/${activeThread.id}/student-replies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ author_id: userId, content: reply.trim() }),
+      });
+      setReply("");
+      await refreshThreads(activeThread.id);
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="flex min-h-screen bg-light text-primary">
+      <NavBar userType="Student" />
+      <main className="ml-64 flex flex-1 flex-col">
+        <Header user="Student" notification={[]} />
+        <div className="p-6">
+          <div className="mb-5 text-sm text-gray-600"><a href="/student" className="hover:text-primary">Dashboard</a><span className="mx-2">/</span><span className="font-medium text-gray-900">Discussion</span></div>
+          {error && <p role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</p>}
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3"><h1 className="text-2xl font-bold">Course Discussion</h1><div className="flex items-center gap-2 rounded-lg border bg-white px-3 py-2"><Filter size={16} className="text-gray-400" /><select value={selectedCourseId} onChange={(event) => { setSelectedCourseId(event.target.value); setActiveThreadId(null); }} className="bg-transparent text-sm outline-none"><option value="">All enrolled courses</option>{courses.map((course) => <option key={course.course_id} value={course.course_id}>{course.code ? `${course.code} — ` : ""}{course.title}</option>)}</select></div></div>
+            <button type="button" onClick={() => setShowNewThread(true)} disabled={!courses.length} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-white shadow disabled:opacity-50"><Plus size={18} />New thread</button>
+          </div>
+          {loading ? <p>Loading discussions…</p> : !courses.length ? <p className="rounded-xl bg-white p-6 text-gray-600">Join an approved course to participate in its discussions.</p> : (
+            <div className="flex min-h-[560px] gap-5">
+              <div className="w-80 shrink-0 overflow-y-auto rounded-xl border bg-white shadow-sm">
+                {filteredThreads.map((thread) => <button type="button" key={thread.id} onClick={() => setActiveThreadId(thread.id)} className={`block w-full border-b p-4 text-left ${activeThread?.id === thread.id ? "border-l-4 border-l-indigo-600 bg-indigo-50" : "hover:bg-gray-50"}`}><span className="block font-semibold text-sm">{thread.title}</span><span className="mt-1 block text-xs text-gray-500">{thread.author} · {thread.course_title}</span><span className="mt-1 block text-xs text-gray-400">{formatStudentDate(thread.created_at)}</span></button>)}
+                {!filteredThreads.length && <p className="p-5 text-sm text-gray-500">No discussion threads for this course yet.</p>}
+              </div>
+              <section className="flex min-w-0 flex-1 flex-col rounded-xl border bg-white shadow-sm">
+                {activeThread ? <>
+                  <header className="border-b bg-gray-50 p-4"><h2 className="font-bold">{activeThread.title}</h2><p className="text-xs text-gray-500">{activeThread.course_title} · {formatStudentDate(activeThread.created_at)}</p></header>
+                  <div className="flex-1 space-y-6 overflow-y-auto p-6">
+                    <article className="flex gap-3"><Avatar name={activeThread.author} /><div><div className="mb-1 flex items-center gap-2"><strong className="text-sm">{activeThread.author}</strong><RoleBadge role={activeThread.author_role} /></div><p className="whitespace-pre-wrap rounded-xl border bg-gray-50 p-4">{activeThread.content}</p></div></article>
+                    {(activeThread.replies || []).map((item) => <article key={item.id} className="flex gap-3"><Avatar name={item.author} /><div><div className="mb-1 flex items-center gap-2"><strong className="text-sm">{item.author}</strong><RoleBadge role={item.author_role} /><span className="text-xs text-gray-400">{formatStudentDate(item.created_at)}</span></div><p className={`whitespace-pre-wrap rounded-xl border p-4 ${roleName(item.author_role) === "Instructor" ? "bg-accent text-white" : "bg-white"}`}>{item.content}</p></div></article>)}
+                  </div>
+                  <form onSubmit={handleReply} className="flex gap-2 border-t bg-gray-50 p-4"><textarea rows={1} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write a reply…" className="min-w-0 flex-1 resize-y rounded-xl border p-3" /><button type="submit" disabled={!reply.trim() || saving} aria-label="Send reply" className="rounded-lg bg-primary p-3 text-white disabled:opacity-50"><Send size={16} /></button></form>
+                </> : <div className="flex flex-1 items-center justify-center text-gray-400"><MessageSquare size={32} /><span className="ml-2">Select a thread or start a discussion.</span></div>}
+              </section>
             </div>
+          )}
         </div>
-    );
+      </main>
+      {showNewThread && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><form onSubmit={handleCreateThread} className="w-full max-w-lg space-y-4 rounded-xl bg-white p-6 shadow-xl"><div className="flex items-center justify-between"><h2 className="text-lg font-bold">New discussion thread</h2><button type="button" onClick={() => setShowNewThread(false)} aria-label="Close"><X /></button></div><label className="block text-sm font-medium">Course<select value={selectedCourseId} onChange={(event) => setSelectedCourseId(event.target.value)} className="mt-1 w-full rounded-lg border p-2">{courses.map((course) => <option key={course.course_id} value={course.course_id}>{course.code ? `${course.code} — ` : ""}{course.title}</option>)}</select></label><label className="block text-sm font-medium">Title<input value={newTitle} onChange={(event) => setNewTitle(event.target.value)} className="mt-1 w-full rounded-lg border p-2" required /></label><label className="block text-sm font-medium">Message<textarea value={newContent} onChange={(event) => setNewContent(event.target.value)} rows={5} className="mt-1 w-full rounded-lg border p-2" required /></label><button type="submit" disabled={saving} className="rounded-lg bg-primary px-4 py-2 text-white disabled:opacity-50">{saving ? "Posting…" : "Post thread"}</button></form></div>}
+    </div>
+  );
 }

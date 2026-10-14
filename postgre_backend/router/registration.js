@@ -346,20 +346,24 @@ router.post(
           username = $1,
           full_name = $2,
           father_name = $3,
-          phone = $4,
-          gender = $5,
-          address = $6,
-          cnic = $7,
-          role = $8,
-          registration_no = $9
-          ${req.files.profile_picture ? ", profile_picture = $10" : ""}
-        WHERE id = $${req.files.profile_picture ? "11" : "10"}
+          email = $4,
+          date_of_birth = $5,
+          phone = $6,
+          gender = $7,
+          address = $8,
+          cnic = $9,
+          role = $10,
+          registration_no = $11
+          ${req.files.profile_picture ? ", profile_picture = $12" : ""}
+        WHERE id = $${req.files.profile_picture ? "13" : "12"}
       `;
 
       const userValues = [
         username,
         full_name,
         father_name,
+        email,
+        date_of_birth || null,
         phone,
         gender,
         address,

@@ -30,7 +30,7 @@ export default function CreateQuizDialog({ isOpen, onClose, courseId, courseTitl
       formData.append("deadline", deadline);
       if (file) formData.append("file", file);
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/quiz`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz`, {
         method: "POST",
         body: formData,
       });

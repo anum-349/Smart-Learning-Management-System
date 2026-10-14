@@ -26,11 +26,12 @@ export default function AdminEnrollmentApproval() {
 
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   /* ---------------- FETCH INITIAL DATA ---------------- */
 
   useEffect(() => {
-    fetch(`${API_URL}/departments`)
+    fetch(`${API_URL}/api/departments`)
       .then(res => res.json())
       .then(setDepartments)
       .catch(console.error);
@@ -41,7 +42,7 @@ export default function AdminEnrollmentApproval() {
       setPrograms([]);
       return;
     }
-    fetch(`${API_URL}/programs?departmentId=${filters.departmentId}`)
+    fetch(`${API_URL}/api/programs?departmentId=${filters.departmentId}`)
       .then(res => res.json())
       .then(setPrograms)
       .catch(console.error);
@@ -52,7 +53,7 @@ export default function AdminEnrollmentApproval() {
       setSemesters([]);
       return;
     }
-    fetch(`${API_URL}/semesters?programId=${filters.programId}`)
+    fetch(`${API_URL}/api/semesters?programId=${filters.programId}`)
       .then(res => res.json())
       .then(setSemesters)
       .catch(console.error);
@@ -71,11 +72,13 @@ export default function AdminEnrollmentApproval() {
     });
 
     try {
-      const res = await fetch(`${API_URL}/enrollment-requests?${params}`);
+      const res = await fetch(`${API_URL}/api/enrollment-requests?${params}`);
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to load enrollment requests");
       setRequests(data);
     } catch (err) {
       console.error(err);
+      setError(err.message || "Unable to load enrollment requests");
     } finally {
       setLoading(false);
     }
@@ -89,12 +92,16 @@ export default function AdminEnrollmentApproval() {
 
   const updateStatus = async (id, action) => {
     try {
-      await fetch(`${API_URL}/enrollment-requests/${id}/${action}`, {
+      const res = await fetch(`${API_URL}/api/enrollment-requests/${id}/${action}`, {
         method: "PUT",
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || `Failed to ${action} request`);
+      setError("");
       fetchRequests();
     } catch (err) {
       console.error(err);
+      setError(err.message || `Unable to ${action} request`);
     }
   };
 
@@ -114,6 +121,8 @@ export default function AdminEnrollmentApproval() {
             <span className="mx-2">/</span>
             Enrollment Approval
           </div>
+
+          {error && <p role="alert" className="mb-4 rounded-lg bg-red-100 p-3 text-red-700">{error}</p>}
 
           {/* Filters */}
           <div className="flex gap-4 mb-6">

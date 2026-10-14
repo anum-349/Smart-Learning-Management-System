@@ -2,10 +2,13 @@
 
 import { Bell } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
 
 const LetterAvatar = ({ name, size = 32, textSize = "text-sm", bgColor = "bg-secondary" }) => {
-    const initial = name.trim().charAt(0).toUpperCase();
+    const initial = (name || "User").trim().charAt(0).toUpperCase();
 
     return (
         <div
@@ -23,7 +26,53 @@ const LetterAvatar = ({ name, size = 32, textSize = "text-sm", bgColor = "bg-sec
 
 export default function Header({ user, notification }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [notifications, setNotifications] = useState(notification);
+    const [notifications, setNotifications] = useState(Array.isArray(notification) ? notification : []);
+    const [profile, setProfile] = useState({ name: user || "User", picture: "", role: "" });
+    const [imageFailed, setImageFailed] = useState(false);
+
+    useEffect(() => {
+        let active = true;
+        const userId = window.localStorage.getItem("userId");
+        const role = window.localStorage.getItem("lms_role") || user || "";
+        const roleKey = role.toLowerCase();
+        setProfile((current) => ({ ...current, role: roleKey }));
+        const profilePath = {
+            admin: `/api/admin/profile/${encodeURIComponent(userId || "")}`,
+            instructor: `/api/registration/instructor/profile/${encodeURIComponent(userId || "")}`,
+            student: `/api/students/profile/${encodeURIComponent(userId || "")}`,
+        }[roleKey];
+
+        const loadProfile = async () => {
+            if (!userId || !API_URL || !profilePath) return;
+            try {
+                const response = await fetch(`${API_URL}${profilePath}`, { cache: "no-store" });
+                if (!response.ok) return;
+                const data = await response.json();
+                if (!active) return;
+                const picture = data.profile_picture
+                    ? (/^https?:\/\//i.test(data.profile_picture)
+                        ? data.profile_picture
+                        : `${API_URL}/${String(data.profile_picture).replaceAll("\\", "/").replace(/^\/+/, "")}`)
+                    : "";
+                setProfile({
+                    name: data.full_name || data.fullname || data.name || user || "User",
+                    picture,
+                    role: roleKey,
+                });
+                setImageFailed(false);
+            } catch {
+                // Keep the role or name passed by the page if profile loading fails.
+            }
+        };
+
+        const refreshProfile = () => loadProfile();
+        loadProfile();
+        window.addEventListener("lms:profile-updated", refreshProfile);
+        return () => {
+            active = false;
+            window.removeEventListener("lms:profile-updated", refreshProfile);
+        };
+    }, [user]);
 
     const hasUnread = useMemo(() => notifications.some((n) => !n.isRead), [notifications]);
 
@@ -42,12 +91,25 @@ export default function Header({ user, notification }) {
 
             {/* HEADER */}
             <header className="flex items-center justify-between bg-textDark p-4 shadow-sm shadow-secondary">
-                <h1 className="text-2xl font-bold text-textLight">
-                    Learning Management System
-                </h1>
+                <Link
+                    href={profile.role === "admin" ? "/admin" : profile.role === "student" ? "/student" : "/instructor"}
+                    aria-label="Aetheron LMS home"
+                    className="flex min-w-0 items-center gap-3"
+                >
+                    <Image
+                        src="/logo.png"
+                        alt="Aetheron LMS logo"
+                        width={64}
+                        height={64}
+                        priority
+                        className="h-12 w-12 shrink-0 rounded-md object-cover sm:h-14 sm:w-14"
+                    />
+                    <h1 className="hidden truncate text-xl font-bold text-textLight sm:block">
+                        Learning Management System
+                    </h1>
+                </Link>
 
                 <div className="flex items-center space-x-4">
-
                     <button
                         onClick={togglePanel}
                         className="p-2 rounded-full hover:bg-secondary/30 transition-colors relative"
@@ -60,16 +122,26 @@ export default function Header({ user, notification }) {
                     </button>
 
                     {/* USER SECTION */}
-                    <Link href={'/instructor/profile'}>
-                        <div className="flex items-center space-x-2">
+                    <Link
+                        href={profile.role === "admin" ? "/admin/settings" : profile.role === "student" ? "/student/profile" : "/instructor/profile"}
+                        className="flex items-center space-x-2"
+                    >
+                        {profile.picture && !imageFailed ? (
+                            <img
+                                src={profile.picture}
+                                alt=""
+                                onError={() => setImageFailed(true)}
+                                className="h-8 w-8 rounded-full border border-white/30 object-cover"
+                            />
+                        ) : (
                             <LetterAvatar
-                                name={user}
+                                name={profile.name}
                                 size={32}
                                 textSize="text-sm"
                                 bgColor="bg-accentDark"
                             />
-                            <span className="font-semibold text-secondary">{user}</span>
-                        </div>
+                        )}
+                        <span className="max-w-40 truncate font-semibold text-textLight">{profile.name}</span>
                     </Link>
                 </div>
             </header>

@@ -37,10 +37,6 @@ const DayCard = ({ day, data }) => (
     </div>
 );
 
-const initialNotifications = [
-    { id: 1, text: "New course added", isRead: false, type: "general" },
-];
-
 export default function Timetable() {
     const [timetable, setTimetable] = useState([]);
     const [userId, setUserId] = useState(null);
@@ -58,7 +54,7 @@ export default function Timetable() {
         const fetchTimetable = async () => {
             try {
                 const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/timetable/user/${userId}`
+                    `${process.env.NEXT_PUBLIC_API_URL}/api/timetable/user/${userId}`
                 );
                 const data = await res.json();
                 console.log(data)
@@ -86,7 +82,7 @@ export default function Timetable() {
         <div className="flex bg-light min-h-screen text-primary">
             <NavBar userType={"Instructor"} />
             <main className="flex-1 ml-64">
-                <Header user="Instructor" notification={initialNotifications} />
+                <Header user="Instructor" notification={[]} />
 
                 <div className="text-sm pl-5 pt-5 text-gray-600 mb-6">
                     <span

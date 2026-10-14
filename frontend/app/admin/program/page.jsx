@@ -11,9 +11,7 @@ import Select from "../../../components/Select";
 import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
-const initialNotifications = [
-    { id: 1, text: "Quiz 3 graded - Score: 95%", isRead: false, type: "grade" },
-];
+const initialNotifications = [];
 
 export default function AdminProgramManagement() {
     const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -40,7 +38,7 @@ export default function AdminProgramManagement() {
     });
 
     const fetchPrograms = async () => {
-        const progRes = await fetch(`${API_URL}/programs`);
+        const progRes = await fetch(`${API_URL}/api/programs`);
         const progData = await progRes.json();
         setPrograms(progData);
     }
@@ -57,7 +55,7 @@ export default function AdminProgramManagement() {
             fetchPrograms()
 
             // Fetch departments
-            const deptRes = await fetch(`${API_URL}/departments`);
+            const deptRes = await fetch(`${API_URL}/api/departments`);
             const deptData = await deptRes.json();
             setDepartments(deptData);
         } catch (err) {
@@ -84,7 +82,7 @@ export default function AdminProgramManagement() {
         console.log(newProgram)
 
         try {
-            const res = await fetch(`${API_URL}/programs`, {
+            const res = await fetch(`${API_URL}/api/programs`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -119,7 +117,7 @@ export default function AdminProgramManagement() {
             title: prog.title,
             code: prog.code,
             durationYears: prog.durationYears,
-            departmentId: prog.departmentId
+            departmentId: prog.departmentId?.id || ""
         });
     };
 
@@ -134,7 +132,7 @@ export default function AdminProgramManagement() {
         }
 
         try {
-            const res = await fetch(`${API_URL}/programs/${updateData.id}`, {
+            const res = await fetch(`${API_URL}/api/programs/${updateData.id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -168,7 +166,7 @@ export default function AdminProgramManagement() {
         if (!confirm("Are you sure you want to delete this program?")) return;
 
         try {
-            const res = await fetch(`${API_URL}/programs/${id}`, { method: "DELETE" });
+            const res = await fetch(`${API_URL}/api/programs/${id}`, { method: "DELETE" });
             if (!res.ok) {
                 const error = await res.json();
                 throw new Error(error.message || "Failed to delete program");

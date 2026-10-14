@@ -1,360 +1,92 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
-import { Save } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import NavBar from "../../../navbar/NavBar";
 import Header from "../../../header/Header";
 import { useRouter } from "next/navigation";
 
-// --- MOCK DATA ---
-const MOCK_COURSES_ATTENDANCE = [
-    {
-        id: "A101",
-        code: "CS202",
-        title: "Introduction to Database Systems",
-        semester: "FALL-I.2024",
-        roster: [
-            { studentId: "S001", registrationNo: "4503-FOC/BSSE/F22", studentName: "Anum Kousar", status: "Present" },
-            { studentId: "S002", registrationNo: "4504-FOC/BSSE/F22", studentName: "Bisma Iftikhar", status: "Absent" },
-            { studentId: "S003", registrationNo: "4505-FOC/BSSE/F22", studentName: "Usman Ali", status: "Present" },
-            { studentId: "S004", registrationNo: "4506-FOC/BSSE/F22", studentName: "Fahad Khan", status: "Leave" },
-            { studentId: "S005", registrationNo: "4507-FOC/BSSE/F22", studentName: "Sana Malik", status: "Present" },
-        ],
-    },
-    {
-        id: "A102",
-        code: "SE273",
-        title: "Software Design and Architecture",
-        semester: "FALL-I.2024",
-        roster: [
-            { studentId: "S001", registrationNo: "4503-FOC/BSSE/F22", studentName: "Anum Kousar", status: "Present" },
-            { studentId: "S002", registrationNo: "4504-FOC/BSSE/F22", studentName: "Bisma Iftikhar", status: "Present" },
-            { studentId: "S003", registrationNo: "4505-FOC/BSSE/F22", studentName: "Usman Ali", status: "Present" },
-            { studentId: "S004", registrationNo: "4506-FOC/BSSE/F22", studentName: "Fahad Khan", status: "Present" },
-            { studentId: "S005", registrationNo: "4507-FOC/BSSE/F22", studentName: "Sana Malik", status: "Present" },
-        ],
-    },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const today = () => new Date().toISOString().slice(0, 10);
 
-// Semester session dates
-const SEMESTER_SESSIONS = [
-    { date: 'Oct-02' },
-    { date: 'Oct-09' },
-    { date: 'Oct-16' },
-    { date: 'Oct-23' },
-    { date: 'Nov-02' },
-    { date: 'Nov-09' },
-    { date: 'Nov-16' },
-    { date: 'Nov-23' },
-    { date: 'Dec-05' },
-    { date: 'Dec-12' },
-    { date: 'Dec-19' },
-    { date: 'Dec-26' },
-];
-
-// Dummy student data with varied attendance statuses
-const DUMMY_STUDENTS = [
-    {
-        studentId: 'S001',
-        registrationNo: '4503-FOC/BSSE/F22',
-        studentName: 'Anum Kousar',
-        sessions: [
-            { date: 'Oct-02', status: 'Present' },
-            { date: 'Oct-09', status: 'Absent' },
-            { date: 'Oct-16', status: 'Present' },
-            { date: 'Oct-23', status: 'Leave' },
-            { date: 'Nov-02', status: 'Present' },
-            { date: 'Nov-09', status: 'Present' },
-            { date: 'Nov-16', status: 'Absent' },
-            { date: 'Nov-23', status: 'Present' },
-            { date: 'Dec-05', status: 'Present' },
-            { date: 'Dec-12', status: 'Leave' },
-            { date: 'Dec-19', status: 'Present' },
-            { date: 'Dec-26', status: 'Present' },
-        ],
-        evaluation: 85
-    },
-    {
-        studentId: 'S002',
-        registrationNo: '4504-FOC/BSSE/F22',
-        studentName: 'Bisma Iftikhar',
-        sessions: [
-            { date: 'Oct-02', status: 'Absent' },
-            { date: 'Oct-09', status: 'Absent' },
-            { date: 'Oct-16', status: 'Present' },
-            { date: 'Oct-23', status: 'Present' },
-            { date: 'Nov-02', status: 'Leave' },
-            { date: 'Nov-09', status: 'Present' },
-            { date: 'Nov-16', status: 'Present' },
-            { date: 'Nov-23', status: 'Absent' },
-            { date: 'Dec-05', status: 'Present' },
-            { date: 'Dec-12', status: 'Present' },
-            { date: 'Dec-19', status: 'Present' },
-            { date: 'Dec-26', status: 'Leave' },
-        ],
-        evaluation: 70
-    },
-    {
-        studentId: 'S003',
-        registrationNo: '4505-FOC/BSSE/F22',
-        studentName: 'Usman Ali',
-        sessions: [
-            { date: 'Oct-02', status: 'Present' },
-            { date: 'Oct-09', status: 'Present' },
-            { date: 'Oct-16', status: 'Present' },
-            { date: 'Oct-23', status: 'Absent' },
-            { date: 'Nov-02', status: 'Present' },
-            { date: 'Nov-09', status: 'Present' },
-            { date: 'Nov-16', status: 'Present' },
-            { date: 'Nov-23', status: 'Present' },
-            { date: 'Dec-05', status: 'Present' },
-            { date: 'Dec-12', status: 'Present' },
-            { date: 'Dec-19', status: 'Absent' },
-            { date: 'Dec-26', status: 'Present' },
-        ],
-        evaluation: 90
-    },
-    {
-        studentId: 'S004',
-        registrationNo: '4506-FOC/BSSE/F22',
-        studentName: 'Fahad Khan',
-        sessions: [
-            { date: 'Oct-02', status: 'Leave' },
-            { date: 'Oct-09', status: 'Leave' },
-            { date: 'Oct-16', status: 'Present' },
-            { date: 'Oct-23', status: 'Present' },
-            { date: 'Nov-02', status: 'Leave' },
-            { date: 'Nov-09', status: 'Absent' },
-            { date: 'Nov-16', status: 'Present' },
-            { date: 'Nov-23', status: 'Present' },
-            { date: 'Dec-05', status: 'Leave' },
-            { date: 'Dec-12', status: 'Present' },
-            { date: 'Dec-19', status: 'Present' },
-            { date: 'Dec-26', status: 'Present' },
-        ],
-        evaluation: 80
-    },
-    {
-        studentId: 'S005',
-        registrationNo: '4507-FOC/BSSE/F22',
-        studentName: 'Sana Malik',
-        sessions: [
-            { date: 'Oct-02', status: 'Present' },
-            { date: 'Oct-09', status: 'Present' },
-            { date: 'Oct-16', status: 'Present' },
-            { date: 'Oct-23', status: 'Present' },
-            { date: 'Nov-02', status: 'Present' },
-            { date: 'Nov-09', status: 'Present' },
-            { date: 'Nov-16', status: 'Present' },
-            { date: 'Nov-23', status: 'Present' },
-            { date: 'Dec-05', status: 'Present' },
-            { date: 'Dec-12', status: 'Present' },
-            { date: 'Dec-19', status: 'Present' },
-            { date: 'Dec-26', status: 'Present' },
-        ],
-        evaluation: 95
-    },
-];
-
-// --- COMPONENT ---
 export default function InstructorAttendance() {
-    const [activeTab, setActiveTab] = useState("take");
-    const [selectedCourseId, setSelectedCourseId] = useState(MOCK_COURSES_ATTENDANCE[0].id);
-    const selectedCourse = MOCK_COURSES_ATTENDANCE.find(c => c.id === selectedCourseId) || MOCK_COURSES_ATTENDANCE[0];
-    const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split("T")[0]);
-    const [currentAttendance, setCurrentAttendance] = useState(selectedCourse.roster);
-    const [students, setStudents] = useState(DUMMY_STUDENTS);
+  const router = useRouter();
+  const [instructorId, setInstructorId] = useState("");
+  const [courses, setCourses] = useState([]);
+  const [courseId, setCourseId] = useState("");
+  const [date, setDate] = useState(today());
+  const [roster, setRoster] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [tab, setTab] = useState("take");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-    const router = useRouter()
-    // Update roster on course change
-    useEffect(() => {
-        setCurrentAttendance(selectedCourse.roster);
-    }, [selectedCourseId, selectedCourse.roster]);
+  useEffect(() => {
+    const id = localStorage.getItem("userId");
+    if (!id || !API_URL) { setError(!id ? "Please sign in to view attendance." : "The backend API URL is not configured."); setLoading(false); return; }
+    setInstructorId(id);
+    fetch(`${API_URL}/api/instructor/courses/${id}`).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Unable to load courses.");
+      setCourses(data); setCourseId(String(data[0]?.id || ""));
+    }).catch((err) => setError(err.message)).finally(() => setLoading(false));
+  }, []);
 
-    const handleStatusChange = (studentId, newStatus) => {
-        setCurrentAttendance(prev => prev.map(s => s.studentId === studentId ? { ...s, status: newStatus } : s));
+  useEffect(() => {
+    if (!courseId || !instructorId) return;
+    const load = async () => {
+      setError("");
+      try {
+        const [rosterResponse, historyResponse] = await Promise.all([
+          fetch(`${API_URL}/api/attendance/course/${courseId}?instructor_id=${instructorId}&date=${date}`),
+          fetch(`${API_URL}/api/attendance/course/${courseId}/history?instructor_id=${instructorId}`),
+        ]);
+        const rosterData = await rosterResponse.json(); const historyData = await historyResponse.json();
+        if (!rosterResponse.ok || !historyResponse.ok) throw new Error(rosterData.error || historyData.error || "Unable to load attendance.");
+        setRoster(rosterData); setHistory(historyData);
+      } catch (err) { setError(err.message); }
     };
+    load();
+  }, [courseId, date, instructorId]);
 
-    const handleSaveAttendance = () => {
-        console.log("Attendance Saved:", { course: selectedCourse.code, date: attendanceDate, attendance: currentAttendance });
-        alert(`Attendance for ${selectedCourse.code} on ${attendanceDate} saved successfully!`);
-    };
+  const sessions = useMemo(() => [...new Set(history.map((entry) => String(entry.attendance_date).slice(0, 10)))].sort(), [history]);
+  const students = useMemo(() => {
+    const byStudent = new Map();
+    for (const entry of history) {
+      if (!byStudent.has(entry.student_id)) byStudent.set(entry.student_id, { ...entry, sessions: {} });
+      if (entry.attendance_date) byStudent.get(entry.student_id).sessions[String(entry.attendance_date).slice(0, 10)] = entry.status;
+    }
+    return [...byStudent.values()];
+  }, [history]);
 
-    return (
-        <div className="flex bg-light min-h-screen text-primary">
-            <NavBar userType={"Instructor"} />
-            <main className="flex-1 ml-64 ">
-                <Header user="Instructor" notification={[]} />
+  const save = async () => {
+    setSaving(true); setError("");
+    try {
+      const response = await fetch(`${API_URL}/api/attendance/course/${courseId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instructor_id: instructorId, date, records: roster.map(({ student_id, status }) => ({ student_id, status })) }),
+      });
+      const result = await response.json(); if (!response.ok) throw new Error(result.error || "Unable to save attendance.");
+      const historyResponse = await fetch(`${API_URL}/api/attendance/course/${courseId}/history?instructor_id=${instructorId}`);
+      setHistory(await historyResponse.json());
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
+  };
 
-                <div className="text-sm text-gray-600 mb-6 pt-5 pl-5">
-                    <span
-                        onClick={() => router.push("/instructor")}
-                        className="cursor-pointer hover:text-primary"
-                    >
-                        Dashboard
-                    </span>
-                    <span className="mx-2">/</span>
-                    <span
-                        onClick={() => router.push("/instructor/course")}
-                        className="cursor-pointer hover:text-primary"
-                    >
-                        Course
-                    </span>
-                    <span className="mx-2">/</span>
-                    <span className="font-medium text-gray-900">Attendance</span>
-                </div>
-
-                <div className="p-6 pt-0 max-w-7xl mx-auto">
-
-                    {/* Tabs */}
-                    <div className="flex border-b border-gray-300 mb-6">
-                        <button
-                            className={`px-6 py-3 font-semibold transition ${activeTab === "take" ? "border-b-4 border-accentDark text-accentDark" : "text-gray-600 hover:text-gray-800"}`}
-                            onClick={() => setActiveTab("take")}
-                        >
-                            Take Attendance
-                        </button>
-                        <button
-                            className={`px-6 py-3 font-semibold transition ${activeTab === "view" ? "border-b-4 border-accentDark text-accentDark" : "text-gray-600 hover:text-gray-800"}`}
-                            onClick={() => setActiveTab("view")}
-                        >
-                            View Attendance
-                        </button>
-                    </div>
-
-                    {/* Course Selector */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div>
-                            <span className="block text-gray-600 font-semibold mb-1">Course Title</span>
-                            <p className="bg-gray-100 border border-primary p-3 rounded-lg">{selectedCourse.title}</p>
-                        </div>
-                        <div>
-                            <span className="block text-gray-600 font-semibold mb-1">Semester</span>
-                            <p className="bg-gray-100 border border-primary p-3 rounded-lg">{selectedCourse.semester}</p>
-                        </div>
-                    </div>
-
-                    {/* Tab Content */}
-                    <div className="bg-white rounded-lg shadow-lg p-6">
-                        {activeTab === "take" && (
-                            <>
-                                <div className="mb-4">
-                                    <label className="block text-gray-600 font-semibold mb-1">Date</label>
-                                    <input type="date" value={attendanceDate} onChange={e => setAttendanceDate(e.target.value)} className="p-3 border rounded-lg w-full md:w-1/3" />
-                                </div>
-
-                                <div className="overflow-x-auto border rounded-lg">
-                                    <table className="min-w-full divide-y divide-gray-300">
-                                        <thead className="bg-gray-100">
-                                            <tr>
-                                                <th className="px-4 py-2 text-left">Student Name</th>
-                                                <th className="px-4 py-2 text-center">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentAttendance.map(student => (
-                                                <tr key={student.studentId} className="hover:bg-gray-50">
-                                                    <td className="px-4 py-2">{student.studentName} <span className="text-xs text-gray-400">({student.registrationNo})</span></td>
-                                                    <td className="px-4 py-2 flex justify-center space-x-2">
-                                                        {["Present", "Absent", "Leave"].map(status => (
-                                                            <button key={status}
-                                                                onClick={() => handleStatusChange(student.studentId, status)}
-                                                                className={`px-3 py-1 rounded-lg font-semibold transition ${student.status === status
-                                                                    ? status === "Present" ? "bg-primary text-white" :
-                                                                        status === "Absent" ? "bg-red-600 text-white" :
-                                                                            "bg-accentDark text-white"
-                                                                    : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                                                                    }`}
-                                                            >
-                                                                {status}
-                                                            </button>
-                                                        ))}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div className="mt-4 flex justify-end">
-                                    <button onClick={handleSaveAttendance} className="flex items-center px-6 py-3 bg-primary text-white font-bold rounded-lg hover:bg-textDark transition">
-                                        Save Attendance
-                                    </button>
-                                </div>
-                            </>
-                        )}
-
-                        {activeTab === "view" && (
-                            <div className="border max-w-4xl relative rounded-lg flex flex-col">
-
-                                {/* Main Table Container */}
-                                <div className="overflow-auto flex-1">
-                                    <table className="min-w-max table-auto divide-y divide-gray-300 border-collapse">
-                                        <thead className="bg-gray-100 sticky top-0 z-30">
-                                            <tr>
-                                                <th className="px-4 py-3 text-left sticky left-0 bg-gray-100 z-40 border-b shadow-[inset_-1px_0_0_0_#e5e7eb]">
-                                                    Student Name
-                                                </th>
-                                                {SEMESTER_SESSIONS.map((session, idx) => (
-                                                    <th key={idx} className="px-4 py-3 text-center text-sm font-semibold text-gray-600 border-b">
-                                                        {session.date}
-                                                    </th>
-                                                ))}
-                                                <th className="px-4 py-3 text-center sticky right-0 bg-gray-100 z-40 border-b shadow-[inset_1px_0_0_0_#e5e7eb]">
-                                                    Attendance %
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="bg-white divide-y divide-gray-200">
-                                            {students.map((student) => {                                                
-                                                // Calculations
-                                                const totalPresent = student.sessions.filter(s => s.status === 'Present').length;
-                                                const percentage = student.sessions.length
-                                                    ? Math.round((totalPresent / student.sessions.length) * 100)
-                                                    : 0;
-
-                                                return (
-                                                    <tr key={student.studentId} className="hover:bg-gray-50 transition-colors">
-                                                        {/* Sticky Name */}
-                                                        <td className="px-4 py-3 sticky left-0 bg-white z-20 whitespace-nowrap border-r shadow-[inset_-1px_0_0_0_#e5e7eb]">
-                                                            <p className="font-medium text-gray-900">{student.studentName}</p>
-                                                            <p className="text-xs text-gray-500">{student.registrationNo}</p>
-                                                        </td>
-
-                                                        {/* Dynamic Session Data */}
-                                                        {student.sessions.map((session, idx) => (
-                                                            <td key={idx} className="px-4 py-3 text-center whitespace-nowrap">
-                                                                <span className={`text-sm font-bold ${session.status === "Absent" ? "text-red-600" :
-                                                                    session.status === "Leave" ? "text-yellow-500" :
-                                                                        "text-green-600"
-                                                                    }`}>
-                                                                    {session.status[0]}
-                                                                </span>
-                                                            </td>
-                                                        ))}
-
-                                                        {/* Sticky Percentage */}
-                                                        <td className={`px-4 py-3 text-center font-bold sticky right-0 bg-white z-20 border-l shadow-[inset_1px_0_0_0_#e5e7eb] ${percentage < 75 ? "text-red-600" : "text-green-600"
-                                                            }`}>
-                                                            {percentage}%
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div>
-                                    <button className="px-4 py-2 mt-10 m-3 rounded bg-primary hover:bg-textDark  text-light">
-                                        Export Attendance as excel sheet
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </main>
-        </div>
-    );
+  const course = courses.find((item) => String(item.id) === courseId);
+  return <div className="flex min-h-screen bg-light text-primary"><NavBar userType="Instructor" /><main className="ml-64 flex-1"><Header user="Instructor" notification={[]} />
+    <div className="p-6"><div className="mb-5 flex items-center gap-2 text-sm"><button onClick={() => router.push("/instructor")}>Dashboard</button><span>/</span><span>Attendance</span></div>
+      {error && <p role="alert" className="mb-4 text-red-600">{error}</p>}
+      <div className="mb-5 flex flex-wrap items-end gap-4 rounded-xl bg-white p-4 shadow-sm">
+        <label className="grid gap-1 text-sm">Course<select value={courseId} onChange={(e) => setCourseId(e.target.value)} className="rounded border px-3 py-2">{courses.map((item) => <option key={item.id} value={item.id}>{item.code} · {item.title}</option>)}</select></label>
+        <label className="grid gap-1 text-sm">Date<input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded border px-3 py-2" /></label>
+        <button onClick={() => setTab("take")} className={`rounded px-4 py-2 ${tab === "take" ? "bg-primary text-white" : "border"}`}>Take attendance</button>
+        <button onClick={() => setTab("view")} className={`rounded px-4 py-2 ${tab === "view" ? "bg-primary text-white" : "border"}`}>View history</button>
+      </div>
+      <h1 className="mb-4 text-xl font-semibold">{course?.code} · {course?.title}</h1>
+      {loading ? <p>Loading courses…</p> : !courseId ? <p>No courses have been assigned to you.</p> : tab === "take" ? <section className="overflow-x-auto rounded-xl bg-white p-5 shadow-sm">
+        {!roster.length ? <p>No enrolled students found for this course.</p> : <><table className="w-full text-sm"><thead><tr className="text-left"><th className="p-3">Student</th><th className="p-3">Registration</th><th className="p-3">Status for {date}</th></tr></thead><tbody className="divide-y">{roster.map((student) => <tr key={student.student_id}><td className="p-3">{student.student_name}</td><td className="p-3">{student.registration_no || "—"}</td><td className="space-x-2 p-3">{["Present", "Absent", "Leave"].map((status) => <button key={status} onClick={() => setRoster((rows) => rows.map((row) => row.student_id === student.student_id ? { ...row, status } : row))} className={`rounded px-3 py-1 ${student.status === status ? "bg-primary text-white" : "bg-gray-100"}`}>{status}</button>)}</td></tr>)}</tbody></table><div className="mt-4 flex justify-end"><button disabled={saving} onClick={save} className="rounded bg-primary px-5 py-2 text-white disabled:opacity-50">{saving ? "Saving…" : "Save attendance"}</button></div></>}
+      </section> : <section className="overflow-auto rounded-xl bg-white p-5 shadow-sm">{!students.length ? <p>No attendance has been recorded for this course.</p> : <table className="min-w-full text-sm"><thead><tr><th className="sticky left-0 bg-white p-3 text-left">Student</th>{sessions.map((session) => <th key={session} className="p-3">{new Date(`${session}T00:00:00`).toLocaleDateString()}</th>)}<th className="p-3">Attendance</th></tr></thead><tbody className="divide-y">{students.map((student) => { const attended = Object.values(student.sessions).filter((status) => status === "Present").length; const rate = sessions.length ? Math.round(attended / sessions.length * 100) : 0; return <tr key={student.student_id}><td className="sticky left-0 bg-white p-3">{student.student_name}<div className="text-xs text-gray-500">{student.registration_no}</div></td>{sessions.map((session) => <td key={session} className="p-3 text-center">{student.sessions[session] || "—"}</td>)}<td className="p-3 text-center font-semibold">{rate}%</td></tr>; })}</tbody></table>}</section>}
+    </div>
+  </main></div>;
 }

@@ -54,7 +54,7 @@ export default function CourseContentManager() {
     useEffect(() => {
         if (!userId) return;
         const fetchCourses = async () => {
-            const res = await fetch(`${API_URL}/course-assignments/instructor/${userId}`)
+            const res = await fetch(`${API_URL}/api/course-assignments/instructor/${userId}`)
             const data = await res.json();
             setCourses(data)
         }
@@ -66,7 +66,7 @@ export default function CourseContentManager() {
 
         const fetchResources = async () => {
             const res = await fetch(
-                `${API_URL}/resources/course/${selectedCourse}`
+                `${API_URL}/api/resources/course/${selectedCourse}`
             );
             const data = await res.json();
 
@@ -117,7 +117,7 @@ export default function CourseContentManager() {
     };
 
     const handleDeleteResource = async (id) => {
-        await fetch(`${API_URL}/resources/${id}`, { method: "DELETE" });
+        await fetch(`${API_URL}/api/resources/${id}`, { method: "DELETE" });
         setResources(resources.filter(r => r.id !== id));
     };
 
@@ -133,8 +133,8 @@ export default function CourseContentManager() {
         console.log(form)
 
         const url = editingResource
-            ? `${API_URL}/resources/${editingResource.id}`
-            : `${API_URL}/resources`;
+            ? `${API_URL}/api/resources/${editingResource.id}`
+            : `${API_URL}/api/resources`;
 
         const method = editingResource ? "PUT" : "POST";
 
@@ -145,7 +145,7 @@ export default function CourseContentManager() {
         setFormData({ title: "", type: "Lecture", file: null });
 
         // reload
-        const res = await fetch(`${API_URL}/resources/course/${selectedCourse}`);
+        const res = await fetch(`${API_URL}/api/resources/course/${selectedCourse}`);
         const data = await res.json();
         setResources(data.map(r => ({
             id: r.id,
@@ -242,7 +242,7 @@ export default function CourseContentManager() {
 
                                             <td className="px-6 py-3">
                                                 <a
-                                                    href={`http://localhost:5000/${resource.fileUrl}`}
+                                                    href={`${API_URL}/${resource.fileUrl?.replaceAll("\\", "/")}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-blue-600 hover:underline font-medium"

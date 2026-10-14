@@ -11,12 +11,7 @@ import Select from "../../../components/Select";
 import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
-const initialNotifications = [
-  { id: 1, text: "Quiz 3 graded - Score: 95%", isRead: false, type: "grade" },
-  { id: 2, text: 'New lesson added: "Advanced React Hooks"', isRead: false, type: "course" },
-  { id: 3, text: "Welcome to your new dashboard!", isRead: true, type: "general" },
-  { id: 4, text: "Instructor John Doe posted a new announcement.", isRead: false, type: "announcement" },
-];
+const initialNotifications = [];
 
 export default function AdminFacultyManagement() {
   const [facultys, setFacultys] = useState([]);
@@ -45,7 +40,7 @@ export default function AdminFacultyManagement() {
   }, []);
 
   const fetchFaculty = async () => {
-    const facRes = await fetch(`${API_URL}/faculties`);
+    const facRes = await fetch(`${API_URL}/api/faculties`);
     const facData = await facRes.json();
     setFacultys(facData);
   }
@@ -57,7 +52,7 @@ export default function AdminFacultyManagement() {
       fetchFaculty();
 
       // Fetch instructors (deans)
-      const instRes = await fetch(`${API_URL}/instructor/deans`);
+      const instRes = await fetch(`${API_URL}/api/instructor/deans`);
       const instData = await instRes.json();
       setInstructors(instData || []);
     } catch (err) {
@@ -92,7 +87,7 @@ export default function AdminFacultyManagement() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/faculties`, {
+      const res = await fetch(`${API_URL}/api/faculties`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -144,7 +139,7 @@ export default function AdminFacultyManagement() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/faculties/${updateData.id}`, {
+      const res = await fetch(`${API_URL}/api/faculties/${updateData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -175,7 +170,7 @@ export default function AdminFacultyManagement() {
     if (!confirm("Are you sure? This action cannot be undone.")) return;
 
     try {
-      const res = await fetch(`${API_URL}/faculties/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_URL}/api/faculties/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Failed to delete faculty");

@@ -26,7 +26,10 @@ const upload = multer({ storage });
 // Get all content
 router.get("/", async (req, res) => {
   try {
-    const result = await pool.query("SELECT c.*, d.title AS department_name, p.title AS program_name, cs.title AS course_name FROM course_contents c LEFT JOIN departments d ON c.department_id::int = d.id LEFT JOIN programs p ON c.program_id::int = p.id LEFT JOIN courses cs ON c.course_id::int = cs.id ORDER BY c.created_at DESC");
+    const { courseId } = req.query;
+    const values = [];
+    const courseFilter = courseId ? (values.push(courseId), `WHERE c.course_id::int = $${values.length}`) : "";
+    const result = await pool.query(`SELECT c.*, d.title AS department_name, p.title AS program_name, cs.title AS course_name FROM course_contents c LEFT JOIN departments d ON c.department_id::int = d.id LEFT JOIN programs p ON c.program_id::int = p.id LEFT JOIN courses cs ON c.course_id::int = cs.id ${courseFilter} ORDER BY c.created_at DESC`, values);
     res.json(result.rows);
   } catch (err) {
     console.error(err);

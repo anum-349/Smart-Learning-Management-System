@@ -40,15 +40,111 @@ router.get("/", async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT i.id, u.full_name
-       FROM instructors i 
-	   left join users u on u.id = i.user_id
-       WHERE i.department_id = $1`,
-      [departmentId]
+      `SELECT i.user_id AS id, u.full_name, u.email, u.registration_no,
+        i.department_id, d.title AS department_title, i.rank, i.office_timing,
+        i.employment_type, i.research_speciality, i.status
+       FROM instructors i
+       JOIN users u ON u.id = i.user_id
+       LEFT JOIN departments d ON d.id = i.department_id
+       WHERE ($1::int IS NULL OR i.department_id = $1)
+       ORDER BY u.full_name`,
+      [departmentId || null]
     );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/", async (req, res) => {
+  const { fullName, username, email, password, registrationNo, departmentId, rank, employmentType, officeTiming, researchSpeciality, status } = req.body;
+  if (!fullName?.trim() || !email?.trim() || !password) {
+    return res.status(400).json({ message: "Name, email, and password are required" });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await client.query(
+      `INSERT INTO users (username, full_name, email, password, role, registration_no)
+       VALUES ($1,$2,$3,$4,'Instructor',$5) RETURNING id`,
+      [username?.trim() || email.split("@")[0], fullName.trim(), email.trim(), passwordHash, registrationNo?.trim() || null]
+    );
+    await client.query(
+      `INSERT INTO instructors (user_id, department_id, rank, employment_type, office_timing, research_speciality, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [user.rows[0].id, departmentId || null, rank || null, employmentType || null, officeTiming || null, researchSpeciality || null, status || "active"]
+    );
+    await client.query("COMMIT");
+    res.status(201).json({ id: user.rows[0].id, message: "Instructor created" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Admin instructor create error:", err);
+    res.status(err.code === "23505" ? 409 : 500).json({
+      message: err.code === "23505" ? "Email, username, or registration number is already in use" : "Failed to create instructor",
+    });
+  } finally {
+    client.release();
+  }
+});
+
+router.put("/:instructorId", async (req, res) => {
+  const { fullName, username, email, password, registrationNo, departmentId, rank, employmentType, officeTiming, researchSpeciality, status } = req.body;
+  if (!fullName?.trim() || !email?.trim()) {
+    return res.status(400).json({ message: "Name and email are required" });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const found = await client.query("SELECT user_id FROM instructors WHERE user_id=$1 FOR UPDATE", [req.params.instructorId]);
+    if (!found.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Instructor not found" });
+    }
+    const values = [username?.trim() || email.split("@")[0], fullName.trim(), email.trim(), registrationNo?.trim() || null];
+    let updateUser = `UPDATE users SET username=$1, full_name=$2, email=$3, registration_no=$4`;
+    if (password) {
+      values.push(await bcrypt.hash(password, 10));
+      updateUser += `, password=$${values.length}`;
+    }
+    values.push(req.params.instructorId);
+    await client.query(`${updateUser} WHERE id=$${values.length}`, values);
+    await client.query(
+      `UPDATE instructors SET department_id=$1, rank=$2, employment_type=$3,
+       office_timing=$4, research_speciality=$5, status=$6 WHERE user_id=$7`,
+      [departmentId || null, rank || null, employmentType || null, officeTiming || null, researchSpeciality || null, status || "active", req.params.instructorId]
+    );
+    await client.query("COMMIT");
+    res.json({ message: "Instructor updated" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Admin instructor update error:", err);
+    res.status(err.code === "23505" ? 409 : 500).json({
+      message: err.code === "23505" ? "Email, username, or registration number is already in use" : "Failed to update instructor",
+    });
+  } finally {
+    client.release();
+  }
+});
+
+router.delete("/:instructorId", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const instructor = await client.query("DELETE FROM instructors WHERE user_id=$1 RETURNING user_id", [req.params.instructorId]);
+    if (!instructor.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ message: "Instructor not found" });
+    }
+    await client.query("DELETE FROM users WHERE id=$1", [req.params.instructorId]);
+    await client.query("COMMIT");
+    res.json({ message: "Instructor deleted" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Admin instructor delete error:", err);
+    res.status(500).json({ message: "Failed to delete instructor. Related records may need to be removed first." });
+  } finally {
+    client.release();
   }
 });
 

@@ -40,7 +40,7 @@ export default function LMSSignupPage() {
 
         setLoading(true);
         try {
-            const response = await fetch(`${API_URL}/auth/signup`, {
+            const response = await fetch(`${API_URL}/api/auth/signup`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, password, role }),

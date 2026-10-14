@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, User, Table, Calendar, LogOut, Settings, LayoutDashboard, Users, Building2, BookOpen } from "lucide-react";
+import { Home, User, Table, Calendar, LogOut, LayoutDashboard, Users, Building2, BookOpen, CheckSquare, Notebook, GraduationCap, MessageCircle, List } from "lucide-react";
 
 const SidebarItem = ({ icon, label, href, active }) => (
     <Link
@@ -36,6 +36,8 @@ const InstructorLinks = [
 const StudentLinks = [
     { icon: Home, label: "Dashboard", href: "/student" },
     { icon: User, label: "Profile", href: "/student/profile" },
+    { icon: BookOpen, label: "My Courses", href: "/student/course" },
+    { icon: Users, label: "Enrollment", href: "/student/enrollment" },
     { icon: Table, label: "Timetable", href: "/student/timetable" },
     { icon: Calendar, label: "Calendar", href: "/student/calendar" },
     { icon: LogOut, label: "Logout", href: "/login" },
@@ -57,7 +59,7 @@ export default function NavBar({ userType }) {
                 {userType} Panel
             </div>
 
-            <nav className="mt-4 space-y-1 font-medium">
+            <nav className="mt-4 max-h-[calc(100vh-5rem)] space-y-1 overflow-y-auto pb-4 font-medium">
                 {links.map((link) =>
                     "href" in link && "icon" in link ? (
                         <SidebarItem

@@ -33,6 +33,8 @@ export default function StudentRegistrationPage() {
   const [departments, setDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [semesters, setSemesters] = useState([]);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -48,9 +50,20 @@ export default function StudentRegistrationPage() {
 
   /* ---------------- LOAD DROPDOWNS ---------------- */
   useEffect(() => {
-    fetch(`${API_URL}/departments`).then(r => r.json()).then(setDepartments);
-    fetch(`${API_URL}/programs`).then(r => r.json()).then(setPrograms);
-    fetch(`${API_URL}/semesters`).then(r => r.json()).then(setSemesters);
+    if (!API_URL) {
+      setError("The backend API URL is not configured.");
+      return;
+    }
+    Promise.all(["departments", "programs", "semesters"].map(async (endpoint) => {
+      const response = await fetch(`${API_URL}/api/${endpoint}`);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.message || `Failed to load ${endpoint}`);
+      return payload;
+    })).then(([departmentRows, programRows, semesterRows]) => {
+      setDepartments(departmentRows);
+      setPrograms(programRows);
+      setSemesters(semesterRows);
+    }).catch((err) => setError(err.message));
   }, []);
 
   /* ---------------- HANDLERS ---------------- */
@@ -89,6 +102,12 @@ export default function StudentRegistrationPage() {
   /* ---------------- SUBMIT ---------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!API_URL || !form.user_id) {
+      setError(!form.user_id ? "Please sign in before completing registration." : "The backend API URL is not configured.");
+      return;
+    }
+    setSaving(true);
+    setError("");
     const formData = new FormData();
 
     Object.entries(form).forEach(([k, v]) => {
@@ -109,17 +128,19 @@ export default function StudentRegistrationPage() {
     });
 
     try {
-      const res = await fetch(`${API_URL}/registration/student/register`, {
+      const res = await fetch(`${API_URL}/api/registration/student/register`, {
         method: "POST",
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Failed to save student");
-      alert("✅ Student saved successfully");
-      router.push("/admin/students");
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload.message || payload.error || "Failed to save student");
+      router.push("/student");
     } catch (err) {
       console.error(err);
-      alert(err.message);
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -131,6 +152,7 @@ export default function StudentRegistrationPage() {
           <h1 className="text-xl font-semibold mb-6">
             Student Registration / Update
           </h1>
+          {error && <p role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-8">
 
@@ -278,8 +300,8 @@ export default function StudentRegistrationPage() {
 
             {/* SUBMIT */}
             <div className="flex justify-end">
-              <button className="px-6 py-2 bg-primary text-white rounded-md">
-                Save Student
+              <button disabled={saving} className="px-6 py-2 bg-primary text-white rounded-md disabled:opacity-50">
+                {saving ? "Saving…" : "Save Student"}
               </button>
             </div>
 

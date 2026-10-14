@@ -8,21 +8,12 @@ import {
     Bell, ChevronLeft, ChevronRight, PlusCircle, Clock, MapPin, Save, X
 } from "lucide-react";
 
-const initialNotifications = [
-    { id: 1, text: "New course added", isRead: false, type: "general" },
-];
 const formatDate = (date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
     const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
 };
-
-const MOCK_EVENTS = [
-    { id: 1, date: formatDate(new Date(2025, 11, 17)), title: "Grading Deadline", time: "17:00", location: "Online" },
-    { id: 2, date: formatDate(new Date(2025, 11, 20)), title: "CS301 Lecture", time: "09:00", location: "Hall A1" },
-    { id: 3, date: formatDate(new Date(2025, 11, 20)), title: "Office Hours", time: "14:00", location: "Room 205" },
-];
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -53,13 +44,13 @@ const getCalendarDays = (date) => {
 
 export default function Calendar() {
     const [currentDate, setCurrentDate] = React.useState(new Date());
-    const [events, setEvents] = React.useState(MOCK_EVENTS);
+    const [events, setEvents] = React.useState([]);
     const [selectedDate, setSelectedDate] = React.useState(formatDate(new Date()));
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [newEvent, setNewEvent] = React.useState({ title: "", time: "", location: "" });
     const [userId, setUserId] = useState(null)
 
-    const userType = "Instructor"
+    const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
     useEffect(() => {
         const storeid = localStorage.getItem("userId")
@@ -68,34 +59,39 @@ export default function Calendar() {
 
     const eventsOnSelectedDay = events
         .filter(e => e.date === selectedDate)
-        .sort((a, b) => a.time.localeCompare(b.time));
+        .sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
 
     const calendarDays = getCalendarDays(currentDate);
     const monthName = currentDate.toLocaleString("default", { month: "long", year: "numeric" });
     useEffect(() => {
+        if (!userId || !API_URL) return;
         const fetchEvents = async () => {
             try {
                 const month = currentDate.getMonth() + 1;
                 const year = currentDate.getFullYear();
 
                 const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_URL}/${userType.toLowerCase()}s/${userId}/calendar?month=${month}&year=${year}`
+                    `${API_URL}/api/instructors/${userId}/calendar?month=${month}&year=${year}`
                 );
+                if (!response.ok) throw new Error("Unable to load calendar events.");
                 const data = await response.json();
-
-                setEvents(data);
+                setEvents(data.map((event) => ({
+                    ...event,
+                    date: String(event.date).slice(0, 10),
+                    time: String(event.time || "").slice(0, 5),
+                })));
             } catch (err) {
                 console.error('Failed to fetch events:', err);
             }
         };
 
         fetchEvents();
-    }, [currentDate, userType]);
+    }, [currentDate, userId, API_URL]);
 
     const handleAddEvent = async () => {
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType.toLowerCase()}s/${userId}/calendar`,
+                `${API_URL}/api/instructors/${userId}/calendar`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -103,7 +99,12 @@ export default function Calendar() {
                 }
             );
             const addedEvent = await res.json();
-            setEvents([...events, addedEvent]); // update local state
+            if (!res.ok) throw new Error(addedEvent.message || "Unable to add event.");
+            setEvents((items) => [...items, {
+                ...addedEvent,
+                date: String(addedEvent.date).slice(0, 10),
+                time: String(addedEvent.time || "").slice(0, 5),
+            }]);
             setIsModalOpen(false);
             setNewEvent({ title: "", time: "", location: "" });
         } catch (err) {
@@ -115,7 +116,7 @@ export default function Calendar() {
         <div className="flex bg-light min-h-screen text-primary">
             <NavBar userType={"Instructor"} />
             <main className="flex-1 ml-64">
-                <Header user="Instructor" notification={initialNotifications} />
+                <Header user="Instructor" notification={[]} />
                 <div className="container mx-auto p-6 pt-10">
                     <div className="text-sm text-gray-500 mb-6 flex items-center gap-2">
                         <Link href="/instructor" className="hover:text-accentDark">
@@ -188,10 +189,16 @@ export default function Calendar() {
                             <div className="space-y-3">
                                 {eventsOnSelectedDay.map(e => (
                                     <div key={e.id} className="border rounded-lg p-3">
+                                        {e.event_type && e.event_type !== "event" && (
+                                            <span className="text-xs font-semibold uppercase tracking-wide text-primary">
+                                                {e.event_type} due
+                                            </span>
+                                        )}
                                         <p className="font-medium">{e.title}</p>
-                                        <p className="text-sm text-gray-500 flex items-center">
+                                        {e.course_title && <p className="text-sm text-gray-500">{e.course_title}</p>}
+                                        {e.time && <p className="text-sm text-gray-500 flex items-center">
                                             <Clock size={14} className="mr-1" /> {e.time}
-                                        </p>
+                                        </p>}
                                         {e.location && (
                                             <p className="text-sm text-gray-400 flex items-center">
                                                 <MapPin size={14} className="mr-1" /> {e.location}

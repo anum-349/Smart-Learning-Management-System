@@ -10,9 +10,7 @@ import Input from "../../../components/Input";
 import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
-const initialNotifications = [
-  { id: 1, text: "New batch created", isRead: false, type: "general" },
-];
+const initialNotifications = [];
 
 export default function AdminBatchManagement() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -46,7 +44,7 @@ export default function AdminBatchManagement() {
   }, []);
 
   const fetchBatches = async () => {
-    const batchRes = await fetch(`${API_URL}/batches`);
+    const batchRes = await fetch(`${API_URL}/api/batches`);
     const batchData = await batchRes.json();
     setBatches(batchData);
   }
@@ -57,12 +55,12 @@ export default function AdminBatchManagement() {
       fetchBatches()
 
       // Fetch programs
-      const progRes = await fetch(`${API_URL}/programs`);
+      const progRes = await fetch(`${API_URL}/api/programs`);
       const progData = await progRes.json();
       setPrograms(progData);
 
       // Fetch instructors
-      const instrRes = await fetch(`${API_URL}/instructor/advisor`);
+      const instrRes = await fetch(`${API_URL}/api/instructor/advisor`);
       const instrData = await instrRes.json();
       setInstructors(instrData);
     } catch (err) {
@@ -74,12 +72,8 @@ export default function AdminBatchManagement() {
   // ------------------ Filter ------------------
   const filteredBatches = batches.filter(
     (b) =>
-      b.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      b.program?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      `${b.batch_advisor?.firstName} ${b.batch_advisor?.lastName}`
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+      [b.title, b.term, b.program_title, b.full_name]
+        .some((value) => (value || "").toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // ------------------ CREATE ------------------
@@ -91,7 +85,7 @@ export default function AdminBatchManagement() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/batches`, {
+      const res = await fetch(`${API_URL}/api/batches`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -134,7 +128,7 @@ export default function AdminBatchManagement() {
     e.preventDefault();
     console.log(updateData)
     try {
-      const res = await fetch(`${API_URL}/batches/${updateData.id}`, {
+      const res = await fetch(`${API_URL}/api/batches/${updateData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -161,7 +155,7 @@ export default function AdminBatchManagement() {
   const handleDeleteBatch = async (id) => {
     if (!confirm("Are you sure?")) return;
     try {
-      const res = await fetch(`${API_URL}/batches/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_URL}/api/batches/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete batch.");
       fetchBatches()
       alert("Batch deleted successfully!");

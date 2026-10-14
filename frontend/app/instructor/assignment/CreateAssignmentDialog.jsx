@@ -1,155 +1,48 @@
 "use client";
 
-import { useState, ChangeEvent, FormEvent } from "react";
-import { Calendar, CheckCircle, Trash2, Upload } from "lucide-react";
+import { useEffect, useState } from "react";
 import Modal from "@/components/ui/Modal";
 
-const MOCK_COURSE = {
-  title: "Web Development",
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const emptyForm = { course_id: "", title: "", description: "", total_marks: "10", start_date: "", deadline: "", file: null };
 
-export default function CreateAssignmentDialog({ isOpen, onClose }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [file, setFile] = useState(null);
-  const [totalMarks, setTotalMarks] = useState(1);
-  const [startDate, setStartDate] = useState("");
-  const [deadline, setDeadline] = useState("");
+export default function CreateAssignmentDialog({ isOpen, onClose, onSaved, courses, instructorId }) {
+  const [form, setForm] = useState(emptyForm);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { if (isOpen) { setForm({ ...emptyForm, course_id: courses[0]?.id || "" }); setError(""); } }, [isOpen, courses]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    alert("✅ Assignment Created (Mock)");
-    onClose();
+  const submit = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      const body = new FormData();
+      Object.entries({ ...form, instructor_id: instructorId }).forEach(([key, value]) => {
+        if (value !== null && value !== "") body.append(key, value);
+      });
+      const response = await fetch(`${API_URL}/api/assignments`, { method: "POST", body });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Unable to create assignment.");
+      await onSaved();
+      onClose();
+    } catch (err) { setError(err.message); }
+    finally { setSaving(false); }
   };
 
-  const handleFileChange = (e) => {
-    if (e.target.files) setFile(e.target.files[0]);
-  };
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create Assignment">
-      <form onSubmit={handleSubmit} className="space-y-6 text-secondary">
-        <p className="text-sm text-gray-800">
-          Course: <span className="font-medium">{MOCK_COURSE.title}</span>
-        </p>
-
-        {/* Title */}
-        <div>
-          <label className="text-sm font-medium text-gray-700">
-            Assignment Title
-          </label>
-          <input
-            type="text"
-            className="mt-1 w-full border border-primary rounded-lg px-3 py-2"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="text-sm font-medium text-gray-700">
-            Description
-          </label>
-          <textarea
-            className="mt-1 w-full  border-primary border rounded-lg px-3 py-2 min-h-[100px]"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        {/* File */}
-        <div>
-          <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-            <Upload size={16} />
-            Upload File
-          </label>
-
-          <div className="flex items-center gap-3 mt-2">
-            <input
-              type="file"
-              id="file"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <label
-              htmlFor="file"
-              className="cursor-pointer border border-dashed px-4 py-2 rounded-lg text-sm hover:bg-gray-50"
-            >
-              {file ? "Change File" : "Choose File"}
-            </label>
-
-            {file && (
-              <Trash2
-                size={16}
-                className="cursor-pointer text-red-500"
-                onClick={() => setFile(null)}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Dates & Marks */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-              <CheckCircle size={16} className="text-green-600" />
-              Marks
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={totalMarks}
-              onChange={(e) => setTotalMarks(+e.target.value)}
-              className="mt-1 w-full border-primary border rounded-lg px-3 py-2"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-              <Calendar size={16} />
-              Start Date
-            </label>
-            <input
-              type="date"
-              className="mt-1 w-full border-primary border rounded-lg px-3 py-2"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
-              <Calendar size={16} />
-              Deadline
-            </label>
-            <input
-              type="date"
-              className="mt-1 w-full border-primary border rounded-lg px-3 py-2"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 border border-accent rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-6 py-2 rounded-lg bg-primary text-white"
-          >
-            Save
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
+  return <Modal isOpen={isOpen} onClose={onClose} title="Create Assignment">
+    <form onSubmit={submit} className="space-y-4 text-primary">
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      <label className="block text-sm">Course<select required value={form.course_id} onChange={(e) => setForm({ ...form, course_id: e.target.value })} className="mt-1 w-full rounded border px-3 py-2">{courses.map((course) => <option key={course.id} value={course.id}>{course.code} · {course.title}</option>)}</select></label>
+      <label className="block text-sm">Title<input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1 w-full rounded border px-3 py-2" /></label>
+      <label className="block text-sm">Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="mt-1 w-full rounded border px-3 py-2" /></label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="text-sm">Total marks<input required type="number" min="0.01" step="0.01" value={form.total_marks} onChange={(e) => setForm({ ...form, total_marks: e.target.value })} className="mt-1 w-full rounded border px-3 py-2" /></label>
+        <label className="text-sm">Start date<input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="mt-1 w-full rounded border px-3 py-2" /></label>
+        <label className="text-sm">Deadline<input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} className="mt-1 w-full rounded border px-3 py-2" /></label>
+        <label className="text-sm">Instructions file<input type="file" onChange={(e) => setForm({ ...form, file: e.target.files?.[0] || null })} className="mt-1 w-full" /></label>
+      </div>
+      <div className="flex justify-end gap-3"><button type="button" onClick={onClose} className="rounded border px-4 py-2">Cancel</button><button disabled={saving} className="rounded bg-primary px-4 py-2 text-white disabled:opacity-50">{saving ? "Saving…" : "Create"}</button></div>
+    </form>
+  </Modal>;
 }

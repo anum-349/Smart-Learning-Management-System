@@ -10,10 +10,7 @@ import Select from "../../../components/Select";
 import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
-// Mock data for demonstration (replace with API calls)
-const initialNotifications = [
-  { id: 1, text: "Course assignment created", isRead: false, type: "general" },
-];
+const initialNotifications = [];
 
 export default function AdminCourseAssignment() {
   const [assignments, setAssignments] = useState([]);
@@ -28,7 +25,7 @@ export default function AdminCourseAssignment() {
   const [instructors, setInstructors] = useState([]);
 
   const fetchCourseAssignments = async () => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/course-assignments`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/course-assignments`)
       .then(res => res.json())
       .then(setAssignments);
   }
@@ -91,7 +88,7 @@ export default function AdminCourseAssignment() {
 
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/faculties`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/faculties`)
       .then(res => res.json())
       .then(setFaculties);
   }, []);
@@ -99,7 +96,7 @@ export default function AdminCourseAssignment() {
   useEffect(() => {
     if (!formData.facultyId) return;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/departments?facultyId=${formData.facultyId}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/departments?facultyId=${formData.facultyId}`)
       .then(res => res.json())
       .then(setDepartments);
   }, [formData.facultyId]);
@@ -107,7 +104,7 @@ export default function AdminCourseAssignment() {
   useEffect(() => {
     if (!formData.departmentId) return;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/programs?departmentId=${formData.departmentId}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/programs?departmentId=${formData.departmentId}`)
       .then(res => res.json())
       .then(setPrograms);
   }, [formData.departmentId]);
@@ -115,7 +112,7 @@ export default function AdminCourseAssignment() {
   useEffect(() => {
     if (!formData.programId) return;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/batches?programId=${formData.programId}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/batches?programId=${formData.programId}`)
       .then(res => res.json())
       .then(setBatches);
   }, [formData.programId]);
@@ -123,13 +120,13 @@ export default function AdminCourseAssignment() {
   useEffect(() => {
     if (!formData.batchId) return;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/semesters?batchId=${formData.batchId}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/semesters?batchId=${formData.batchId}`)
       .then(res => res.json())
       .then(setSemesters);
   }, [formData.batchId]);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/courses`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/courses`)
       .then(res => res.json())
       .then(setCourses);
   }, []);
@@ -137,7 +134,7 @@ export default function AdminCourseAssignment() {
   useEffect(() => {
     if (!formData.departmentId) return;
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/instructor?departmentId=${formData.departmentId}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/instructor?departmentId=${formData.departmentId}`)
       .then(res => res.json())
       .then(setInstructors);
   }, [formData.departmentId]);
@@ -145,7 +142,7 @@ export default function AdminCourseAssignment() {
   const handleAddAssignment = async (e) => {
     e.preventDefault();
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/course-assignments`, {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/course-assignments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -180,7 +177,7 @@ export default function AdminCourseAssignment() {
 
   if (!updateData.id) return alert("Invalid assignment ID");
 
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/course-assignments/${updateData.id}`, {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/course-assignments/${updateData.id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -200,7 +197,7 @@ export default function AdminCourseAssignment() {
   const handleDeleteAssignment = async (id) => {
     if (!confirm("Are you sure?")) return;
 
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/course-assignments/${id}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/course-assignments/${id}`, {
       method: "DELETE"
     });
 

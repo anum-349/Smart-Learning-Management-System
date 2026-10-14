@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Header from "../../header/Header";
 import NavBar from "../../navbar/NavBar";
 import { MapPin } from "lucide-react";
+import { getStoredUserId, studentFetch } from "@/lib/student-api";
 
 // Optional: You can extract all unique time slots from backend if needed
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -12,17 +13,18 @@ export default function StudentTimetable() {
     const [timetableData, setTimetableData] = useState([]);
     const [timeSlots, setTimeSlots] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-
-    // const userId = typeof window !== "undefined" ? localStorage.getItem("userId") : 5;
-    const userId = 5
+    const [error, setError] = useState("");
 
     useEffect(() => {
-        if (!userId) return;
-
+        const userId = getStoredUserId();
+        if (!userId) {
+            setError("Please sign in to view your timetable.");
+            setIsLoading(false);
+            return;
+        }
         const fetchTimetable = async () => {
             try {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/timetable/student/${userId}`);
-                const data = await res.json();
+                const data = await studentFetch(`/api/timetable/student/${encodeURIComponent(userId)}`);
 
                 // Extract unique time slots dynamically
                 const slots = Array.from(new Set(data.map(item => item.time))).sort(
@@ -31,15 +33,15 @@ export default function StudentTimetable() {
 
                 setTimeSlots(slots);
                 setTimetableData(data);
-                setIsLoading(false);
             } catch (err) {
-                console.error("Failed to fetch timetable:", err);
+                setError(err.message);
+            } finally {
                 setIsLoading(false);
             }
         };
 
         fetchTimetable();
-    }, [userId]);
+    }, []);
 
     const getScheduleCell = (day, time) =>
         timetableData.find(item => item.day === day && item.time === time);
@@ -47,19 +49,21 @@ export default function StudentTimetable() {
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center text-primary bg-light">
-                <p>Loading timetable...</p>
+                <p>{error || "Loading timetable..."}</p>
             </div>
         );
     }
 
     return (
         <div className="flex bg-light min-h-screen text-primary">
-            <NavBar />
+            <NavBar userType="Student" />
             <main className="flex-1 ml-64">
                 <Header user="Student" notification={[]} />
 
+                {error && <p role="alert" className="m-6 rounded-lg border border-red-200 bg-red-50 p-3 text-red-700">{error}</p>}
+
                 <div className="overflow-x-auto m-10 rounded-2xl border border-textDark shadow-lg">
-                    <div className={`grid grid-cols-${DAYS_OF_WEEK.length + 1} min-w-[900px]`}>
+                    <div className="grid min-w-[900px]" style={{ gridTemplateColumns: `repeat(${DAYS_OF_WEEK.length + 1}, minmax(0, 1fr))` }}>
                         {/* Time Column */}
                         <div className="sticky left-0 z-10 bg-light border-r border-textDark">
                             <div className="h-12 p-3 font-bold text-center border-b border-textDark bg-textDark text-white">Time</div>

@@ -34,7 +34,7 @@ export default function AdminSemesterCourseAssignment() {
 
     // --- Fetch Departments ---
     useEffect(() => {
-        fetch(`${API_URL}/departments`)
+        fetch(`${API_URL}/api/departments`)
             .then(res => res.json())
             .then(setDepartments)
             .catch(console.error);
@@ -43,7 +43,7 @@ export default function AdminSemesterCourseAssignment() {
     // --- Fetch Programs ---
     useEffect(() => {
         if (!selectedDeptId) return setPrograms([]);
-        fetch(`${API_URL}/programs?departmentId=${selectedDeptId}`)
+        fetch(`${API_URL}/api/programs?departmentId=${selectedDeptId}`)
             .then(res => res.json())
             .then(setPrograms)
             .catch(console.error);
@@ -52,7 +52,7 @@ export default function AdminSemesterCourseAssignment() {
     // --- Fetch Batches ---
     useEffect(() => {
         if (!selectedProgramId) return setBatches([]);
-        fetch(`${API_URL}/batches?programId=${selectedProgramId}`)
+        fetch(`${API_URL}/api/batches?programId=${selectedProgramId}`)
             .then(res => res.json())
             .then(setBatches)
             .catch(console.error);
@@ -61,7 +61,7 @@ export default function AdminSemesterCourseAssignment() {
     // --- Fetch Semesters ---
     useEffect(() => {
         if (!selectedBatchId) return setSemesters([]);
-        fetch(`${API_URL}/semesters?batchId=${selectedBatchId}`)
+        fetch(`${API_URL}/api/semesters?batchId=${selectedBatchId}`)
             .then(res => res.json())
             .then(setSemesters)
             .catch(console.error);
@@ -71,7 +71,7 @@ export default function AdminSemesterCourseAssignment() {
     useEffect(() => {
         if (!selectedSemesterId) return setCourses([]);
 
-        fetch(`${API_URL}/courses?semesterId=${selectedSemesterId}`)
+        fetch(`${API_URL}/api/courses`)
             .then(res => res.json())
             .then(setCourses)
             .catch(console.error);
@@ -80,7 +80,7 @@ export default function AdminSemesterCourseAssignment() {
     // --- Fetch Existing Assignment for selected fields ---
     useEffect(() => {
         if (!selectedProgramId || !selectedSemesterId) return setCurrentAssignments([]);
-        fetch(`${API_URL}/semester-course-assignments/${selectedProgramId}/${selectedSemesterId}`)
+        fetch(`${API_URL}/api/semester-course-assignments/${selectedProgramId}/${selectedSemesterId}`)
             .then(res => res.json())
             .then(data => setCurrentAssignments(data.assigned_course_ids || []))
             .catch(() => setCurrentAssignments([]));
@@ -89,7 +89,7 @@ export default function AdminSemesterCourseAssignment() {
     // --- Fetch all assignments for "View" tab ---
     useEffect(() => {
         if (activeTab === "view") {
-            fetch(`${API_URL}/semester-course-assignments`)
+            fetch(`${API_URL}/api/semester-course-assignments`)
                 .then(res => res.json())
                 .then(setAllAssignments)
                 .catch(console.error);
@@ -121,9 +121,10 @@ export default function AdminSemesterCourseAssignment() {
         if (!confirm("Are you sure you want to delete this assignment?")) return;
 
         try {
-            await fetch(`${API_URL}/semester-course-assignments/${id}`, {
+            const response = await fetch(`${API_URL}/api/semester-course-assignments/${id}`, {
                 method: "DELETE",
             });
+            if (!response.ok) throw new Error("Delete failed");
 
             setAllAssignments(prev => prev.filter(a => a.id !== id));
 
@@ -159,16 +160,16 @@ export default function AdminSemesterCourseAssignment() {
         try {
             const res = await fetch(
                 isEdit
-                    ? `${API_URL}/semester-course-assignments/${editingAssignmentId}`
-                    : `${API_URL}/semester-course-assignments`,
+                    ? `${API_URL}/api/semester-course-assignments/${editingAssignmentId}`
+                    : `${API_URL}/api/semester-course-assignments`,
                 {
                     method: isEdit ? "PUT" : "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
                 }
             );
-
-            await res.json();
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.message || "Save failed");
 
             setStatusMessage({
                 type: "success",

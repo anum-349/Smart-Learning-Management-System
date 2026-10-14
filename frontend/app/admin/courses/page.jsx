@@ -10,9 +10,8 @@ import Input from "../../../components/Input";
 import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
-const initialNotifications = [
-  { id: 1, text: "New course added", isRead: false, type: "general" },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const initialNotifications = [];
 
 export default function AdminCourseManagement() {
   const [courses, setCourses] = useState([]);
@@ -23,7 +22,7 @@ export default function AdminCourseManagement() {
   const [newCourse, setNewCourse] = useState({ title: "", code: "", creditHours: "" });
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/courses")
+    fetch(`${API_URL}/api/courses`)
       .then(res => res.json())
       .then(data =>
         setCourses( data?
@@ -47,7 +46,7 @@ export default function AdminCourseManagement() {
   const handleAddCourse = async (e) => {
     e.preventDefault();
 
-    const res = await fetch("http://localhost:5000/api/courses", {
+    const res = await fetch(`${API_URL}/api/courses`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(newCourse),
@@ -76,7 +75,7 @@ export default function AdminCourseManagement() {
     console.log(updateData)
 
     const res = await fetch(
-      `http://localhost:5000/api/courses/${updateData.id}`,
+      `${API_URL}/api/courses/${updateData.id}`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -99,7 +98,7 @@ export default function AdminCourseManagement() {
   const handleDeleteCourse = async (id) => {
     if (!confirm("Are you sure?")) return;
 
-    await fetch(`http://localhost:5000/api/courses/${id}`, {
+    await fetch(`${API_URL}/api/courses/${id}`, {
       method: "DELETE",
     });
 

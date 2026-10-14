@@ -11,70 +11,61 @@ import Select from "../../../components/Select";
 import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
-// Mock Data
-const initialNotifications = [
-  { id: 1, text: "Welcome Admin!", isRead: false, type: "general" },
-];
-
-const departmentsData = [
-  { _id: "d1", title: "Computer Science" },
-  { _id: "d2", title: "Software Engineering" },
-];
-
-const initialInstructors = [
-  {
-    _id: "inst1",
-    firstName: "Ali",
-    lastName: "Akbar",
-    email: "ali@example.com",
-    registrationNo: "INST-1001",
-    departmentId: "d1",
-    rank: "Professor",
-    employmentTypeId: "Permanent",
-    status: "active",
-    officeTiming: "9am - 5pm",
-    researchSpeciality: "AI"
-  },
-  {
-    _id: "inst2",
-    firstName: "Sara",
-    lastName: "Khan",
-    email: "sara@example.com",
-    registrationNo: "INST-1002",
-    departmentId: "d2",
-    rank: "Assistant Professor",
-    employmentTypeId: "Visiting",
-    status: "on_leave",
-    officeTiming: "10am - 4pm",
-    researchSpeciality: "Cybersecurity"
-  },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const emptyForm = {
+  id: "", firstName: "", lastName: "", email: "", password: "", registrationNo: "",
+  departmentId: "", rank: "", employmentTypeId: "", status: "active", officeTiming: "", researchSpeciality: ""
+};
 
 export default function AdminInstructorManagement() {
   const [instructors, setInstructors] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({ departmentId: "", status: "", employmentTypeId: "" });
+  const [filters, setFilters] = useState({ departmentId: "", employmentTypeId: "", status: "" });
 
   const [isEdit, setIsEdit] = useState(false);
-  const [formData, setFormData] = useState({
-    _id: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    registrationNo: "",
-    departmentId: "",
-    rank: "",
-    employmentTypeId: "",
-    status: "active",
-    officeTiming: "",
-    researchSpeciality: ""
-  });
+  const [formData, setFormData] = useState(emptyForm);
 
   useEffect(() => {
-    setInstructors(initialInstructors);
-    setDepartments(departmentsData);
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [instructorRes, departmentRes] = await Promise.all([
+          fetch(`${API_URL}/api/instructor`),
+          fetch(`${API_URL}/api/departments`),
+        ]);
+        const [instructorData, departmentData] = await Promise.all([instructorRes.json(), departmentRes.json()]);
+        if (!instructorRes.ok) throw new Error(instructorData.message || "Failed to load instructors");
+        if (!departmentRes.ok) throw new Error(departmentData.message || "Failed to load departments");
+        setInstructors(instructorData.map((row) => {
+          const names = (row.full_name || "").trim().split(/\s+/);
+          return {
+            id: row.id,
+            firstName: names[0] || "",
+            lastName: names.slice(1).join(" "),
+            email: row.email || "",
+            registrationNo: row.registration_no || "",
+            departmentId: row.department_id == null ? "" : String(row.department_id),
+            departmentTitle: row.department_title || "",
+            rank: row.rank || "",
+            employmentTypeId: row.employment_type || "",
+            status: row.status || "active",
+            officeTiming: row.office_timing || "",
+            researchSpeciality: row.research_speciality || "",
+          };
+        }));
+        setDepartments(departmentData.map((d) => ({ id: String(d.dept_id ?? d.id), title: d.title })));
+      } catch (err) {
+        setError(err.message || "Unable to load instructor data");
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
   const handleFilterChange = (field, value) => {
@@ -85,51 +76,76 @@ export default function AdminInstructorManagement() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleAddInstructor = (e) => {
-    e.preventDefault();
-    const newInstructor = { ...formData, _id: Date.now().toString() };
-    setInstructors([...instructors, newInstructor]);
-    setFormData({
-      _id: "",
-      firstName: "",
-      lastName: "",
-      email: "",
-      registrationNo: "",
-      departmentId: "",
-      rank: "",
-      employmentTypeId: "",
-      status: "active",
-      officeTiming: "",
-      researchSpeciality: ""
-    });
-  };
-
   const handleEditInstructor = (inst) => {
     setIsEdit(true);
-    setFormData(inst);
+    setFormData({ ...emptyForm, ...inst, password: "" });
   };
 
-  const handleUpdateInstructor = (e) => {
+  const handleSaveInstructor = async (e) => {
     e.preventDefault();
-    setInstructors(instructors.map(i => i._id === formData._id ? formData : i));
-    setIsEdit(false);
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        fullName: `${formData.firstName} ${formData.lastName}`.trim(),
+        email: formData.email,
+        password: formData.password || undefined,
+        registrationNo: formData.registrationNo,
+        departmentId: formData.departmentId || null,
+        rank: formData.rank,
+        employmentType: formData.employmentTypeId,
+        status: formData.status,
+        officeTiming: formData.officeTiming,
+        researchSpeciality: formData.researchSpeciality,
+      };
+      const res = await fetch(`${API_URL}/api/instructor${isEdit ? `/${formData.id}` : ""}`, {
+        method: isEdit ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Unable to save instructor");
+      setIsEdit(false);
+      setFormData(emptyForm);
+      const refresh = await fetch(`${API_URL}/api/instructor`);
+      const refreshed = await refresh.json();
+      if (!refresh.ok) throw new Error(refreshed.message || "Instructor saved, but refresh failed");
+      const depts = departments;
+      setInstructors(refreshed.map((row) => {
+        const names = (row.full_name || "").trim().split(/\s+/);
+        return { id: row.id, firstName: names[0] || "", lastName: names.slice(1).join(" "), email: row.email || "",
+          registrationNo: row.registration_no || "", departmentId: row.department_id == null ? "" : String(row.department_id),
+          departmentTitle: depts.find((d) => d.id === String(row.department_id))?.title || row.department_title || "",
+          rank: row.rank || "", employmentTypeId: row.employment_type || "", officeTiming: row.office_timing || "",
+          status: row.status || "active",
+          researchSpeciality: row.research_speciality || "" };
+      }));
+    } catch (err) {
+      setError(err.message || "Unable to save instructor");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDeleteInstructor = (id) => {
+  const handleDeleteInstructor = async (id) => {
     if (confirm("Are you sure to delete this instructor?")) {
-      setInstructors(instructors.filter(i => i._id !== id));
+      try {
+        const res = await fetch(`${API_URL}/api/instructor/${id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Unable to delete instructor");
+        setInstructors((previous) => previous.filter((i) => i.id !== id));
+      } catch (err) {
+        setError(err.message || "Unable to delete instructor");
+      }
     }
   };
 
   const filteredInstructors = instructors.filter(i => {
     return (
       (!filters.departmentId || i.departmentId === filters.departmentId) &&
+      (!filters.employmentTypeId || i.employmentTypeId.toLowerCase() === filters.employmentTypeId.toLowerCase()) &&
       (!filters.status || i.status === filters.status) &&
-      (!filters.employmentTypeId || i.employmentTypeId === filters.employmentTypeId) &&
-      (i.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      i.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      i.registrationNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      i.email.toLowerCase().includes(searchTerm.toLowerCase()))
+      (`${i.firstName} ${i.lastName} ${i.registrationNo} ${i.email}`.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   });
 
@@ -137,7 +153,7 @@ export default function AdminInstructorManagement() {
     <div className="flex bg-light min-h-screen text-primary">
             <NavBar userType={"Admin"} />
       <main className="flex-1 ml-64">
-        <Header user="Admin" notification={initialNotifications} />
+        <Header user="Admin" notification={[]} />
         <div className="container mx-auto p-6 pt-10">
           <div className="text-sm text-gray-500 mb-6 flex items-center gap-2">
             <Link href="/admin" className="hover:text-accentDark">Dashboard</Link>
@@ -151,7 +167,17 @@ export default function AdminInstructorManagement() {
               label="Department"
               value={filters.departmentId}
               onChange={(v) => handleFilterChange("departmentId", v)}
-              options={[{ value: "", label: "All Departments" }, ...departments.map(d => ({ value: d._id, label: d.title }))]}
+              options={[{ value: "", label: "All Departments" }, ...departments.map(d => ({ value: d.id, label: d.title }))]}
+            />
+            <Select
+              label="Employment Type"
+              value={filters.employmentTypeId}
+              onChange={(v) => handleFilterChange("employmentTypeId", v)}
+              options={[
+                { value: "", label: "All Types" },
+                { value: "Permanent", label: "Permanent" },
+                { value: "Visiting", label: "Visiting" }
+              ]}
             />
             <Select
               label="Status"
@@ -162,17 +188,7 @@ export default function AdminInstructorManagement() {
                 { value: "active", label: "Active" },
                 { value: "inactive", label: "Inactive" },
                 { value: "suspended", label: "Suspended" },
-                { value: "on_leave", label: "On Leave" }
-              ]}
-            />
-            <Select
-              label="Employment Type"
-              value={filters.employmentTypeId}
-              onChange={(v) => handleFilterChange("employmentTypeId", v)}
-              options={[
-                { value: "", label: "All Types" },
-                { value: "Permanent", label: "Permanent" },
-                { value: "Visiting", label: "Visiting" }
+                { value: "on_leave", label: "On Leave" },
               ]}
             />
             <div className="relative w-64 top-4">
@@ -186,13 +202,18 @@ export default function AdminInstructorManagement() {
             </div>
           </div>
 
+          {error && <p role="alert" className="mb-4 rounded-lg bg-red-100 p-3 text-red-700">{error}</p>}
+          {loading && <p className="mb-4 text-gray-500">Loading instructors…</p>}
+
           {/* Add/Edit Instructor Form */}
           <div className="bg-light border border-gray-200 rounded-xl shadow-md p-6 mb-6">
             <h2 className="text-xl font-bold mb-4">{isEdit ? "Edit Instructor" : "Add New Instructor"}</h2>
-            <form onSubmit={isEdit ? handleUpdateInstructor : handleAddInstructor} className="grid md:grid-cols-3 gap-4">
+            <form onSubmit={handleSaveInstructor} className="grid md:grid-cols-3 gap-4">
               <Input label="First Name" value={formData.firstName} onChange={(v) => handleChange("firstName", v)} />
               <Input label="Last Name" value={formData.lastName} onChange={(v) => handleChange("lastName", v)} />
               <Input label="Email" value={formData.email} onChange={(v) => handleChange("email", v)} />
+              <Input label="Registration No" value={formData.registrationNo} onChange={(v) => handleChange("registrationNo", v)} />
+              <Input label={isEdit ? "New Password (optional)" : "Initial Password"} type="password" value={formData.password} onChange={(v) => handleChange("password", v)} />
               <Input label="Rank" value={formData.rank} onChange={(v) => handleChange("rank", v)} />
               <Input label="Office Timing" value={formData.officeTiming} onChange={(v) => handleChange("officeTiming", v)} />
               <Input label="Research Speciality" value={formData.researchSpeciality} onChange={(v) => handleChange("researchSpeciality", v)} />
@@ -200,7 +221,7 @@ export default function AdminInstructorManagement() {
                 label="Department"
                 value={formData.departmentId}
                 onChange={(v) => handleChange("departmentId", v)}
-                options={[{ value: "", label: "Select Department" }, ...departments.map(d => ({ value: d._id, label: d.title }))]}
+                options={[{ value: "", label: "Select Department" }, ...departments.map(d => ({ value: d.id, label: d.title }))]}
               />
               <Select
                 label="Employment Type"
@@ -220,14 +241,14 @@ export default function AdminInstructorManagement() {
                   { value: "active", label: "Active" },
                   { value: "inactive", label: "Inactive" },
                   { value: "suspended", label: "Suspended" },
-                  { value: "on_leave", label: "On Leave" }
+                  { value: "on_leave", label: "On Leave" },
                 ]}
               />
               <div className="col-span-3 flex gap-2 mt-2">
-                <button type="submit" className="py-2 px-4 rounded-xl bg-accentDark hover:bg-accent text-white font-semibold flex items-center gap-2">
-                  <PlusCircle /> {isEdit ? "Update Instructor" : "Add Instructor"}
+                <button type="submit" disabled={saving} className="py-2 px-4 rounded-xl bg-accentDark hover:bg-accent text-white font-semibold flex items-center gap-2 disabled:opacity-60">
+                  <PlusCircle /> {saving ? "Saving…" : isEdit ? "Update Instructor" : "Add Instructor"}
                 </button>
-                {isEdit && <button type="button" onClick={() => setIsEdit(false)} className="py-2 px-4 rounded-xl bg-gray-400 hover:bg-gray-500 text-white">Cancel</button>}
+                {isEdit && <button type="button" onClick={() => { setIsEdit(false); setFormData(emptyForm); }} className="py-2 px-4 rounded-xl bg-gray-400 hover:bg-gray-500 text-white">Cancel</button>}
               </div>
             </form>
           </div>
@@ -249,19 +270,18 @@ export default function AdminInstructorManagement() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredInstructors.map(i => {
-                  const dept = departments.find(d => d._id === i.departmentId);
                   return (
-                    <tr key={i._id} className="hover:bg-gray-100">
+                    <tr key={i.id} className="hover:bg-gray-100">
                       <Td>{i.registrationNo}</Td>
                       <Td>{i.firstName} {i.lastName}</Td>
                       <Td>{i.email}</Td>
-                      <Td>{dept?.title}</Td>
+                      <Td>{i.departmentTitle || departments.find(d => d.id === i.departmentId)?.title || "—"}</Td>
                       <Td>{i.rank}</Td>
                       <Td>{i.employmentTypeId}</Td>
                       <Td>{i.status}</Td>
                       <Td className="flex gap-2">
                         <button onClick={() => handleEditInstructor(i)} className="text-primary hover:text-secondary"><Edit size={16} /></button>
-                        <button onClick={() => handleDeleteInstructor(i._id)} className="text-accentDark hover:text-accent"><Trash2 size={16} /></button>
+                        <button onClick={() => handleDeleteInstructor(i.id)} className="text-accentDark hover:text-accent"><Trash2 size={16} /></button>
                       </Td>
                     </tr>
                   )

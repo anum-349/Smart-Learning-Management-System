@@ -48,7 +48,7 @@ export default function InstructorRegistrationPage() {
 
     const fetchInstructorDetails = async () => {
         try {
-            const res = await fetch(`${API_URL}/registration/instructor/profile/${userId}`);
+            const res = await fetch(`${API_URL}/api/registration/instructor/profile/${userId}`);
             const data = await res.json();
             setForm((prev) => ({ ...prev, user_id: userId, email: userEmail, full_name: data.fullname }));
             console.log(data)
@@ -58,11 +58,12 @@ export default function InstructorRegistrationPage() {
     }
 
     useEffect( () => {
+        if (!userId || !API_URL) return;
         fetchInstructorDetails()
     }, [userId, userEmail]);
 
     useEffect(() => {
-        fetch(`${API_URL}/departments`)
+        fetch(`${API_URL}/api/departments`)
             .then(res => res.json())
             .then(setDepartments)
             .catch(console.error);
@@ -124,7 +125,7 @@ export default function InstructorRegistrationPage() {
         for (let [key, value] of formData.entries()) {
             console.log(`${key}:`, value);
         } try {
-            const res = await fetch("http://localhost:5000/api/registration/instructor/register", {
+            const res = await fetch(`${API_URL}/api/registration/instructor/register`, {
                 method: "POST",
                 body: formData // Fetch automatically sets the correct Multipart header
             });

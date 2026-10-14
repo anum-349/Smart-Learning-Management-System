@@ -5,34 +5,20 @@ const router = express.Router();
 
 // GET all batches
 router.get("/", async (req, res) => {
+    const { programId } = req.query;
     try {
         const result = await pool.query(`
      SELECT b.id, b.title, b.term, b.year, p.title as program_title, p.id as program_id, b.batch_advisor_id, i.full_name
       FROM batches b
       JOIN programs p ON b.program_id = p.id
-      JOIN users i ON b.batch_advisor_id = i.id
+      LEFT JOIN users i ON b.batch_advisor_id = i.id
+      WHERE ($1::int IS NULL OR b.program_id = $1)
       ORDER BY b.id DESC
-    `);
+    `, [programId || null]);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: "Failed to fetch batches" });
-    }
-});
-
-router.get("/", async (req, res) => {
-    const { programId } = req.query;
-
-    try {
-        const { rows } = await pool.query(
-            `SELECT id, title
-       FROM batches
-       WHERE program_id = $1`,
-            [programId]
-        );
-        res.json(rows);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
     }
 });
 

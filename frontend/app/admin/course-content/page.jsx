@@ -12,6 +12,7 @@ import Td from "../../../components/Td";
 import Th from "../../../components/Th";
 
 export default function AdminCourseContent() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
   const [departments, setDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -30,7 +31,7 @@ export default function AdminCourseContent() {
 
   // ----------------- Fetch Data from Backend -----------------
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/departments`)
+    fetch(`${API_URL}/api/departments`)
       .then(res => res.json())
       .then(setDepartments);
 
@@ -45,7 +46,7 @@ export default function AdminCourseContent() {
       return;
     }
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/programs?departmentId=${newContent.departmentId}`)
+    fetch(`${API_URL}/api/programs?departmentId=${newContent.departmentId}`)
       .then(res => res.json())
       .then(setPrograms);
     setCourses([]);
@@ -57,14 +58,14 @@ export default function AdminCourseContent() {
       setCourses([]);
       return;
     }
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/courses?programId=${newContent.programId}`)
+    fetch(`${API_URL}/api/courses?programId=${newContent.programId}`)
       .then(res => res.json())
       .then(setCourses);
   }, [newContent.programId]);
 
   // Fetch all contents
   const fetchContents = () => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/course-contents`)
+    fetch(`${API_URL}/api/course-contents`)
       .then(res => res.json())
       .then(setContents);
   };
@@ -98,11 +99,16 @@ export default function AdminCourseContent() {
     formData.append("description", newContent.description);
     formData.append("file", newContent.file);
 
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/course-contents/upload`, {
+    const res = await fetch(`${API_URL}/api/course-contents/upload`, {
       method: "POST",
       body: formData
     });
 
+    if (!res.ok) {
+      const result = await res.json().catch(() => ({}));
+      alert(result.message || result.error || "Failed to upload course content");
+      return;
+    }
     setNewContent({ departmentId: "", programId: "", courseId: "", type: "Other", title: "", file: null, description: "" });
     fetchContents();
   };
@@ -110,15 +116,14 @@ export default function AdminCourseContent() {
   const handleDeleteContent = async (id) => {
     if (!confirm("Are you sure you want to delete this content?")) return;
 
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/course-contents/${id}`, { method: "DELETE" });
+    await fetch(`${API_URL}/api/course-contents/${id}`, { method: "DELETE" });
     fetchContents();
   };
 
   // Filtered contents by search term
   const filteredContents = contents.filter(c => {
-    const course = courses.find(course => course.id === c.course_id);
     return (
-      course?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.course_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.title.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
@@ -225,49 +230,59 @@ export default function AdminCourseContent() {
               />
             </div>
 
-            <div className="border border-gray-200 rounded-xl overflow-hidden bg-light shadow-md">
-              <table className="w-full text-sm">
-                <thead className="bg-primary text-white">
-                  <tr>
-                    <Th>Department</Th>
-                    <Th>Program</Th>
-                    <Th>Course</Th>
-                    <Th>Type</Th>
-                    <Th>Title</Th>
-                    <Th>Description</Th>
-                    <Th>Actions</Th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {contents.map(c => {
-                    return (
-                      <tr key={c.id} className="hover:bg-gray-100">
-                        <Td>{c.department_name}</Td>
-                        <Td>{c.program_name}</Td>
-                        <Td>{c.course_name}</Td>
-                        <Td>{typeIcon(c.type)} {c.type}</Td>
-                        <Td>
+            <div className="w-full border border-gray-200 rounded-xl overflow-hidden bg-white shadow-md">
+              <div className="overflow-x-auto w-full block">
+                <table className="w-full min-w-[800px] text-sm text-left border-collapse table-fixed">
+                  <thead className="bg-primary text-white">
+                    <tr>
+                      <th className="p-4 w-[15%] font-semibold whitespace-nowrap">Program</th>
+                      <th className="p-4 w-[15%] font-semibold whitespace-nowrap">Course</th>
+                      <th className="p-4 w-[25%] font-semibold">Title</th>
+                      <th className="p-4 w-[35%] font-semibold">Description</th>
+                      <th className="p-4 w-[10%] font-semibold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredContents.map(c => (
+                      <tr key={c.id} className="hover:bg-gray-100 transition-colors">
+                        <td className="p-4">{c.program_name}</td>
+                        <td className="p-4">{c.course_name}</td>
+                        <td className="p-4">
                           {c.file_url ? (
-                            <a href={`http://localhost:5000${c.file_url}`} target="_blank" className="text-blue-600 hover:underline">
-                              {c.title}
+                            <a
+                              href={`${API_URL}${c.file_url}`}
+                              target="_blank"
+                              className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                            >
+                              <span className="truncate max-w-[180px]">{c.title}</span>
+                              <span className="text-xs font-bold uppercase opacity-80 whitespace-nowrap">{c.type}</span>
                             </a>
                           ) : "-"}
-                        </Td>
-                        <Td>{c.description || "-"}</Td>
-                        <Td>
-                          <button onClick={() => handleDeleteContent(c.id)} className="text-accentDark hover:text-accent flex items-center gap-1">
+                        </td>
+                        {/* Real flex fallback text wrap behavior */}
+                        <td className="p-4 text-gray-600 whitespace-normal wrap-break-words normal-case">
+                          <div className="block max-w-sm w-full break-all whitespace-pre-wrap">
+                            {c.description || "-"}
+                          </div>
+                        </td>
+                        <td className="p-4 text-right">
+                          <button
+                            onClick={() => handleDeleteContent(c.id)}
+                            className="text-accentDark hover:text-accent inline-flex items-center gap-1 font-medium justify-end w-full"
+                          >
                             <Trash2 size={16} /> Delete
                           </button>
-                        </Td>
+                        </td>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
               {filteredContents.length === 0 && (
                 <p className="text-center text-gray-500 py-6">No content available.</p>
               )}
             </div>
+
           </div>
         </div>
       </main>
