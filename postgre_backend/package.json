@@ -9,7 +9,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate:instructor": "node migrations/apply-instructor-workspace.js",
-    "start": "node index.js",
+    "start": "node init && node index.js",
     "watch": "nodemon index.js"
   },
   "dependencies": {

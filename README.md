@@ -32,7 +32,8 @@ postgre_backend/           Express API and PostgreSQL access
 ## Requirements
 
 - Node.js and npm
-- PostgreSQL, with a database and the core LMS tables available to the backend
+- PostgreSQL, including the `createdb` and `pg_restore` command-line tools
+- The `lms.backup` database backup in the repository root
 
 ## Local setup
 
@@ -69,17 +70,24 @@ Set the PostgreSQL connection and API settings in `postgre_backend/.env`:
 PORT=5000
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=your_database_name
-DB_USER=your_database_user
+DB_NAME=lms
+DB_USER=postgres
 DB_PASSWORD=your_database_password
 JWT_SECRET=replace-with-a-long-random-secret
 ```
 
 Use your own PostgreSQL database credentials and a unique, long `JWT_SECRET`. Keep both `.env` files private. They are ignored by Git; only the `.env.example` templates should be committed. Restart the frontend after changing its environment values.
 
-### 2. Prepare PostgreSQL and run the backend
+### 2. Restore the database and run the backend
 
-The repository currently includes an instructor workspace migration, not a complete initial database schema. Make sure the database and the core LMS tables already exist before applying it. From a terminal:
+From the repository root, create an empty `lms` database and restore the supplied backup:
+
+```bash
+createdb -U postgres -h localhost lms
+pg_restore -U postgres -h localhost -d lms lms.backup
+```
+
+Enter the PostgreSQL password if prompted. Set `DB_PASSWORD` in `postgre_backend/.env` to the same password. Then apply the instructor workspace migration and start the backend:
 
 ```bash
 cd postgre_backend
@@ -88,7 +96,7 @@ npm run migrate:instructor
 npm start
 ```
 
-The migration is additive and can be reviewed in [`postgre_backend/migrations/README.md`](postgre_backend/migrations/README.md). It does not create the entire LMS database or import records from another database. For automatic restarts during development, use `npm run watch` instead of `npm start`.
+The migration is additive and can be reviewed in [`postgre_backend/migrations/README.md`](postgre_backend/migrations/README.md). For automatic restarts during development, use `npm run watch` instead of `npm start`.
 
 The backend listens on `http://localhost:5000` by default. Opening `http://localhost:5000/` should return a short backend response.
 
